@@ -121,18 +121,15 @@ add_custom_command(
     COMMAND ${XMLSTARLET} sel --text -t -v '//sourcecode[@type="cddl"]' "${DRAFT_NAME_XML}" >"${EXTRACTED_CDDL}"
     COMMAND sed -i "'s/[[:space:]]*$$//'" "${EXTRACTED_CDDL}"
 )
+set(SOURCE_CDDL 
+    "${CMAKE_SOURCE_DIR}/bpv7.cddl"
+    "${CMAKE_SOURCE_DIR}/edhoc.cddl"
+    "${CMAKE_SOURCE_DIR}/eid-patterns.cddl"
+)
 add_custom_command(
     OUTPUT "${COMBINED_CDDL}"
-    DEPENDS "${EXTRACTED_CDDL}"
-        "${CMAKE_SOURCE_DIR}/bpv7.cddl"
-        "${CMAKE_SOURCE_DIR}/edhoc.cddl"
-        "${CMAKE_SOURCE_DIR}/eid-patterns.cddl"
-    COMMAND cat
-        "${EXTRACTED_CDDL}"
-        "${CMAKE_SOURCE_DIR}/bpv7.cddl"
-        "${CMAKE_SOURCE_DIR}/edhoc.cddl"
-        "${CMAKE_SOURCE_DIR}/eid-patterns.cddl"
-        >"${COMBINED_CDDL}"
+    DEPENDS "${EXTRACTED_CDDL}" ${SOURCE_CDDL}
+    COMMAND cat "${EXTRACTED_CDDL}" ${SOURCE_CDDL} >"${COMBINED_CDDL}"
 )
 add_custom_target(
     cddl ALL

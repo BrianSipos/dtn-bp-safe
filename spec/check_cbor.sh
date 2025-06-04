@@ -8,5 +8,4 @@ COMBINED_CDDL=$1
 TMPFILE=$(mktemp)
 cat | diag2cbor.rb >${TMPFILE}
 cddl validate --cddl "${COMBINED_CDDL}" --cbor ${TMPFILE}
-echo "Exit $?"
 rm ${TMPFILE}

@@ -299,11 +299,11 @@ A filter for BP traffic based on specific fields of the bundle primary block or 
     <section anchor="sec-prococol">
       <name>General Protocol Description</name>
       <t>
-The service of this protocol is the establishment and management of one or more secondary security association (SA) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific data plane traffic.
+The service of this protocol is the establishment and management of one or more secondary security association (SA) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific data plane traffic as described in <xref target="sec-protocol-bpsec"/>.
 To avoid coupling each SAFE entity with any BPSec entity on the same node, SAFE PDUs use application-provided security instead of relying on BPSec.
       </t>
       <t>
-The initial confidential channel between a pair of SAFE entities is provided by an Ephemeral Diffie-Hellman Over COSE (EDHOC) session <xref target="RFC9528"/>, which includes forward secrecy, mutual authentication, and proof-of-possession.
+The initial confidential channel between a pair of SAFE entities is provided by an Ephemeral Diffie-Hellman Over COSE (EDHOC) session <xref target="RFC9528"/> and <xref target="sec-protocol-edhoc"/>, which includes forward secrecy, mutual authentication, and proof-of-possession.
 EDHOC also allows using external authorization data (EAD) items to confidentially transport SAND messages during session establishment (see <xref target="sec-sa-use-safe-nopsa"/>), which avoids excess delay before negotiating secondary SAs.
       </t>
       <t>
@@ -410,7 +410,7 @@ After the IA has finished and a primary SA is established, confidentiality is pr
       <section anchor="sec-protocol-bpsec">
         <name>Relationship to BPSec</name>
         <t>
-The reason for establishing SAs in the first place is to be able to provide symmetric session keys to be used by BPSec for data plane security operations on individual target blocks within specific bundles as described in <xref target="sec-intro-usecases"/>.
+The reason for establishing secondary SAs in the first place is to be able to provide symmetric session keys to be used by BPSec for data plane security operations on individual target blocks within specific bundles as described in <xref target="sec-intro-usecases"/>.
 Part of the scoping of each SA includes a BPSec security context identifier and its options for which each derived symmetric key is authorized to be used.
         </t>
         <t>
@@ -426,7 +426,7 @@ A secondary SA is scoped by the following aspects which inform BPSec policy on e
           <dt>Security Operation Selectors:</dt>
           <dd>This determines the security service (integrity or confidentiality) and target block types to secure.</dd>
           <dt>Key Use Selectors:</dt>
-          <dd>This is a specific BPSec security context and options for using that context.</dd>
+          <dd>This is a specific BPSec security context and options for using that context with the chosen security service.</dd>
         </dl>
       </section>
       <section anchor="sec-protocol-creds">
@@ -447,6 +447,53 @@ The protocol defined in this document defines a basic set of modes and data type
 But the protocol uses extensible IANA registries (see <xref target="sec-iana-safe"/>) which allow future specifications to define additional well-known code points.
 And each registry has a reserved block to allow private networks to make use of private code points tailored to their specific needs.
         </t>
+        <section>
+          <name>EDHOC Cipher Suites</name>
+          <t>
+The EDHOC cipher suite, chosen by the initiator and agreed with the responder, controls the cryptographic algorithms used to secure the EDHOC session, derive internal key material, authenticate each entity to its peer, and to secure SAFE messages after the EDHOC session has completed.
+The base specification in <xref section="3.6" target="RFC9528"/> defines 9 suites which cover capabilities all the way from lightweight algorithms targeting constrained processors to one which adheres to the NSA Commercial National Security Algorithm Suite (CNSA) version 1 <cref>citation TBD</cref>.
+          </t>
+        </section>
+        <section>
+          <name>EDHOC Methods</name>
+          <t>
+The EDHOC method controls how each entity authenticates to its peer within an EDHOC session.
+The base specification in <xref section="3.2" target="RFC9528"/> defines four methods to cover authenticating each side with either an asymmetric-key signature or a key-agreement-key MAC.
+Future methods are expected to provide access to post-quantum cryptographic (PQC) mechanisms.
+          </t>
+        </section>
+        <section>
+          <name>EDHOC Credential Types and Identifiers</name>
+          <t>
+The credential type used to authenticate each entity and how it is identified to its peer are both chosen by that entity being authenticated, based on a profile exposed outside of this protocol.
+The credential identifiers are derived from COSE header parameters from <xref target="IANA-COSE"/> and currently include a X.509 certificate thumbnail, URL, or certificate chain data, or a C509 certificate thumbnail, URL, or certificate chain data.
+Future credential types are expected to include pre-shared key material.
+          </t>
+        </section>
+        <section>
+          <name>SAFE Activity Types and Data Items</name>
+          <t>
+The activity types defined in this document are expected to be sufficient for SA creation and management, but there is a registry of available types defined in <xref target="sec-iana-safe"/> for future expansion as necessary.
+          </t>
+          <t>
+Within each activity type, specifically the <xref format="title" target="sec-act-sc"/> type, there is a block of code points reserved for private use and left unassigned for future specifications.
+These are expected to include additional selectors for traffic flows beyond just source and destination EID from <xref target="sec-data-esx"/>.
+          </t>
+        </section>
+        <section>
+          <name>BPSec Contexts and Options</name>
+          <t>
+There are currently only two well-known BPSec contexts defined in <xref target="RFC9173"/> and one drafted in <xref target="I-D.ietf-dtn-bpsec-cose"/>.
+The first pair from <xref target="RFC9173"/> are intended to be "... for testing the interoperability ... and for providing basic security operations when no other security contexts are defined or otherwise required for a network" and these have few options needed to operate them as described in <xref target="sec-sa-use-ctx1"/> and <xref target="sec-sa-use-ctx2"/>.
+          </t>
+          <t>
+The COSE context from <xref target="I-D.ietf-dtn-bpsec-cose"/> is more full-featured, but that also means it has more options and more complex configurations of those options available as described in <xref target="sec-sa-use-ctx3"/>; COSE itself is also expected to be expanded in the near- and long-term to include PQC-type algorithms.
+          </t>
+          <t>
+Future contexts are expected to be specialized to specific missions and networks.
+Well-known contexts will be registered with IANA under <xref target="IANA-BUNDLE"/> and need to define a SAFE binding if they are to be used with negotiated secondary SAs.
+          </t>
+        </section>
       </section>
     </section>
     <section anchor="sec-info">
@@ -862,7 +909,8 @@ The use of padding allows an entity to ensure that all SAFE plaintext (and thus 
         </dd>
         <dt>Packetization:</dt>
         <dd>
-This sub-layer is used to embed either a single EDHOC message or single SAFE ciphertext along with identification metadata into a PDU for transport between SAFE entities.
+This sub-layer is used to embed either a single EDHOC message or single SAFE ciphertext, along with necessary metadata, into a PDU for transport between SAFE entities.
+One of the metadata items is a partial IV (PIV) value used for SAFE ciphertext; another is a security association identifier (SAI) used by the receiver to correlate decoding state.
         </dd>
       </dl>
       <figure anchor="fig-safe-sublayers">
@@ -874,7 +922,7 @@ This sub-layer is used to embed either a single EDHOC message or single SAFE cip
  \__________________________________       |
                                     \      |
 +-------------------------------------------+
-| Act. Idx. | Act. Step | Act. Type | Data  |
+| Act. Idx. | Act. Step | Act. Type | Data  | <- Activity State
 +-------------------------------------------+
 |                 SAFE Message              | <- Messaging
 +-------------------------------------------+    and Retransmission
@@ -915,7 +963,7 @@ It is an implementation matter to determine when to aggregate messages but the p
         </t>
         <t>
 An example of this pipelining is shown in <xref target="fig-safe-pipeline-example"/>, which depicts a series of PDUs sent in opposite direction between two peers "A" and "B".
-A <xref format="title" target="sec-act-ia"/> is the first activity, followed by a <xref format="title" target="sec-act-ci"/> initiated in the opposite direction, and finally a pair of <xref format="title" target="sec-act-sc"/> activities initiated opposite that.
+An <xref format="title" target="sec-act-ia"/> is the first activity (initiated by "A"), followed by a <xref format="title" target="sec-act-ci"/> activity (initiated by "B"), and finally a pair of <xref format="title" target="sec-act-sc"/> activities (initiated by "A").
         </t>
         <figure anchor="fig-safe-pipeline-example">
           <name>Pipelining of Activities</name>
@@ -925,16 +973,23 @@ Node A     A     A     A     A
      v     |     v     |     v
 Node B     B     B     B     B
 
-PDU #1    #2    #3    #4    #5
-     |     |     |     |     |
- (IA 0 --- 1 --- 2 --- 3)    |
-     | (CI 0 --- 1 --- 2)    |
-     |     | (SC 0 --- 1 --- 2)
-     |     | (SC 0 --- 1 --- 2)
+ unsecured  | EDHOC security  | SAFE security
+
+    PDU #1    #2    #3    #4    #5
+         |     |     |     |     |
+     (IA 0 --- 1 --- 2 --- 3)    |
+         | (CI 0 --- 1 --- 2)    |
+         |     | (SC 0 --- 1 --- 2)
+         |     | (SC 0 --- 1 --- 2)
 
           =----- time ----->
 ]]></artwork>
         </figure>
+        <t>
+As described in <xref target="sec-layers-agg"/> and indicated in <xref target="fig-safe-pipeline-example"/>, the IA step-0 message is always sent alone in a PDU and unsecured.
+After that IA step 1 through 3 messages use EDHOC session encryption to provide confidentiality with EDHOC EAD for SAFE message aggregation.
+All subsequent messaging occurs using SAFE ciphertext confidentiality with SAFE plaintext aggregation.
+        </t>
       </section>
       <section anchor="sec-layers-msg">
         <name>Message Structure</name>
@@ -1020,13 +1075,13 @@ int16 = -32768 .. 32767
       <section anchor="sec-layers-retrans">
         <name>States, Deduplication, and Retransmission</name>
         <t>
-As described in <xref target="sec-info-act"/>, the state kept by each entity about an activity includes the step of the message last sent by the entity (LTX) and the step last received from the peer entity (LRX).
+As described in <xref target="sec-info-act"/>, the state kept by each entity about an activity includes the step of the message last sent by the entity (LTX) and the step of the message last received from the peer entity (LRX).
 Based on these two step states, each entity can determine how to make progress
         </t>
         <t>
 An example of this logic is shown in <xref target="fig-safe-activity-states"/>.
 The state notation of <tt>{LTX,LRX}</tt> indicates the LTX and LRX steps respectively and negative values are used as a placeholder for an invalid/absent step number.
-If a transition has a specific trigger, it is indicated by square bracket text.
+In that diagram, if a state transition has a specific trigger condition it is indicated by square bracket text.
         </t>
         <figure anchor="fig-safe-activity-states">
           <name>Example activity states for a two-step activity</name>
@@ -1052,14 +1107,14 @@ If a transition has a specific trigger, it is indicated by square bracket text.
         |                 |               |                 |  |
         | { 0, 1} Process |               | { 1, 0} Wait    +--+
         |                 |     Step 2    |                 |[timer]
-        +--------+--------+    Message    +--------+--------+  
-                 |              ident        [RX 2]|           
-                 | TX 2    ~~~~~~~~~~~~~~>         |           
-                 v                                 v           
-        +-----------------+               +-----------------+  
-        |                 |               |                 |  
-        | { 2, 1} Finished|               | { 1, 2} Finished|  
-        |                 |               |                 |  
+        +--------+--------+    Message    +--------+--------+[Re-RX]
+      Re-TX      |              ident        [RX 2]|           
+     +--------+  | TX 2    ~~~~~~~~~~~~~~>         |           
+     |        v  v                                 v           
+     |  +-----------------+               +-----------------+  
+     |  |                 |               |                 |  
+     +--+ { 2, 1} Finished|               | { 1, 2} Finished|  
+ [Re-RX]|                 |               |                 |  
         +--------+--------+               +--------+--------+  
                  |[timer]                   [timer]|           
                  v                                 v           
@@ -1071,10 +1126,10 @@ If a transition has a specific trigger, it is indicated by square bracket text.
 ]]></artwork>
         </figure>
         <t keepWithNext="true">
-Based on an existing <xref target="sec-info-act">activity state</xref> when the last LTX step is less than the LRX step, or when the initiator starts the activity, or an associated retransmission timer expires, the entity <bcp14>SHALL</bcp14> perform the following:
+Based on an existing <xref target="sec-info-act">activity state</xref> when the last LTX step is less than the LRX step, or when the initiator starts the activity, or an activity-associated retransmission timer expires, the entity <bcp14>SHALL</bcp14> perform the following:
         </t>
         <ol>
-          <li>Compute the next step number as one more than the LRX step, if valid, or zero if the initiator has just started the activity.</li>
+          <li>Compute the next step number as either: one more than the LRX step, if it is valid, or step zero if the initiator has just started the activity.</li>
           <li>
             <t>
 If the next step is within the number of steps for this activity type, generate type-specific data items based on the activity type and next step.
@@ -1091,7 +1146,7 @@ Otherwise, only the message identity is present and no activity type or data ite
 If either the LTX or LRX step are beyond the number of steps for this activity type, the activity is in the finished state.
             </t>
             <t>
-Otherwise, begin a retransmission timer correlated to the activity index with a duration taken from the expected round-trip time between the peer node plus some optional additional margin.
+Otherwise, begin a retransmission timer associated to the activity index with a duration taken from the expected round-trip time between the peer node plus some optional additional margin.
 It is an implementation matter to determine the specific margin added to the expected round-trip duration.
             </t>
           </li>
@@ -1100,14 +1155,18 @@ It is an implementation matter to determine the specific margin added to the exp
 Upon receiving a SAFE message from a peer, an entity <bcp14>SHALL</bcp14> perform the following:
         </t>
         <ol>
-          <li>Decode at least the message identity (to be able to look up the activity state)</li>
-          <li>Determine which role this entity is performing by inspecting the step number: even steps are sent by the initiator and odd steps are sent by the responder</li>
-          <li>Use the peer EID and activity index to look up the specific <xref target="sec-info-act">activity state</xref> corresponding to the message</li>
-          <li>If the received message has a step less than or equal to the LRX of the activity state, it is ignored and this procedure is terminated</li>
-          <li>If present, decode and process the activity type and type-specific data items</li>
-          <li>Update the LRX step to correspond with the received message</li>
+          <li>Decode at least the message identity (to be able to look up the activity state).</li>
+          <li>Determine which role this entity is performing by inspecting the step number: even steps are sent by the initiator and odd steps are sent by the responder.</li>
+          <li>Use the peer EID and activity index to look up the specific <xref target="sec-info-act">activity state</xref> corresponding to the message.</li>
+          <li>If the received message has a step less than or equal to the LRX of the activity state, it is ignored and this procedure is terminated.</li>
+          <li>If present, decode and process the activity type and type-specific data items.</li>
+          <li>Update the LRX step to correspond with the received message.</li>
           <li>If either the LTX or LRX step are beyond the number of steps for this activity type, the activity is in the finished state.</li>
         </ol>
+        <t>
+Error indication and handling is generally accomplished by terminating an activity early, indicating error conditions within data item(s) specific to the activity type, and possibly the initiator of the terminated activity attempting a new activity of that type with options adjusted based on error feedback.
+When an error is indicated on an activity it <bcp14>SHALL</bcp14> be considered finished regardless of the step in which the error was indicated.
+        </t>
       </section>
       <section anchor="sec-layers-agg">
         <name>Message Aggregation and Security</name>
@@ -1122,7 +1181,7 @@ The version specific header defined in this document <bcp14>SHALL</bcp14> be the
       </t>
       <dl>
         <dt>Partial IV:</dt>
-        <dd>A partial initialization vector (IV) byte string or <tt>null</tt> value</dd>
+        <dd>A PIV byte string or <tt>null</tt> value</dd>
         <dt>Receiver SAI:</dt>
         <dd>A receiver SAI byte string or integer (based on EDHOC compressed byte string encoding) or <tt>true</tt> value</dd>
       </dl>
@@ -1187,21 +1246,21 @@ Due to the logic of the <xref format="title" target="sec-act-ia"/> sequencing, o
       <section anchor="sec-layers-transport">
         <name>PDU Transport</name>
         <t>
-Each SAFE PDU is handled an application data unit (ADU) of a BPv7 bundle, referred to as a "SAFE bundle" in this document.
+Each SAFE PDU is handled as an application data unit (ADU) of a BPv7 bundle, referred to as a "SAFE bundle" in this document.
 Additional constraints, controllability, and visibility on transport parameters are defined in the following subsection.
         </t>
         <t>
 Both the source and destination EID, defined in <xref section="4.3.1" target="RFC9171"/>, for a SAFE bundle <bcp14>SHALL</bcp14> be singleton.
-The source EID for SAND bundles <bcp14>SHALL NOT</bcp14> be a null EID.
-Each endpoint for SAND messaging needs to be an identified singleton.
-The bundle source and destination EID for received bundles <bcp14>SHALL</bcp14> be exposed to the SAND application in order to support message exchange sequencing.
+The source EID for SAFE bundles <bcp14>SHALL NOT</bcp14> be a null EID.
+Each endpoint for SAFE messaging needs to be an identified singleton.
+The bundle source and destination EID for received bundles <bcp14>SHALL</bcp14> be exposed to the SAFE entity in order to support message exchange sequencing.
         </t>
         <t>
 When using the IPN scheme, the EIDs used as source and/or destination <bcp14>SHOULD</bcp14> use the well-known service number defined in <xref target="sec-iana-well-known-ipn"/>.
-SAFE applications can use other schemes and service numbers, but such configuration is an implementation and deployment matter.
+SAFE entities can use other schemes and service numbers, but such configuration is an implementation and deployment matter.
         </t>
         <t>
-The bundle creation timestamp (both DTN time and sequence number), defined in Timestamp <xref section="4.3.1" target="RFC9171"/>, for received bundles <bcp14>SHALL</bcp14> be exposed to the SAND application to allow it to order received SAND bundles.
+The bundle creation timestamp (both DTN time and sequence number), defined in Timestamp <xref section="4.3.1" target="RFC9171"/>, for received bundles <bcp14>SHALL</bcp14> be exposed to the SAFE entity to allow it to de-duplicate and order received SAFE bundles.
         </t>
       </section>
     </section>
@@ -1228,7 +1287,7 @@ The IA activity <bcp14>SHALL</bcp14> be identified by activity type 0.
         </t>
         <t>
 Only one instance of this activity <bcp14>SHOULD</bcp14> be in progress at any time.
-The data of each PDU for the PI activity <bcp14>SHALL</bcp14> contain an EDHOC message as defined in <xref section="5" target="RFC9528"/>.
+The data of each PDU for the IA activity <bcp14>SHALL</bcp14> contain an EDHOC message as defined in <xref section="5" target="RFC9528"/>.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1239,6 +1298,10 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 2: The PDU payload is an EDHOC Message 3 byte string.</li>
           <li>Step 3: The PDU payload is an EDHOC Message 4 byte string.</li>
         </ul>
+        <t>
+An indication of failure in the activity is provided by an EDHOC error CBOR sequence in place of the normal EDHOC message.
+SAFE entities <bcp14>SHALL</bcp14> use EDHOC errors in accordance with <xref section="6" target="RFC9528"/>.
+        </t>
         <t>
 During transport, PI PDUs <bcp14>SHALL NOT</bcp14> be the target of a BPSec confidentiality operation between the participating (source and destination) nodes.
 The use of application-level confidentiality ensures the security of information exchanged via this PDU.
@@ -1964,7 +2027,7 @@ The ultimate point of establishing a SA is to make use of the derived symmetric 
       </t>
       <t>
 When BPSec contexts make use of SAs defined by this document they will require an explicit mapping from the algorithm and operation selectors from <xref target="sec-info-sa-secondary"/> onto the algorithm and operation identifiers specific to that context.
-For example the default security contexts correspond to a subset of the AES-GCM algorithms of specific key lengths (see <xref target="sec-sa-use-default-bcb"/>) and the HMAC-SHA2 algorithms of specific key lengths (see <xref target="sec-sa-use-default-bib"/>).
+For example the default security contexts correspond to a subset of the AES-GCM algorithms of specific key lengths (see <xref target="sec-sa-use-ctx2"/>) and the HMAC-SHA2 algorithms of specific key lengths (see <xref target="sec-sa-use-ctx1"/>).
       </t>
       <t keepWithNext="true">
 All current and future BPSec context bindings <bcp14>SHALL</bcp14> define the following aspects:
@@ -2167,7 +2230,7 @@ For each of the target block numbers filtered-in by the previous step, the node 
         <t>
         </t>
       </section>
-      <section anchor="sec-sa-use-default-bib">
+      <section anchor="sec-sa-use-ctx1">
         <name>Binding for BIB-HMAC-SHA2 Context</name>
         <t>
 This section defines how a secondary SA can be negotiated for and used by the integrity context of <xref target="RFC9173"/> with context identifier code point 1.
@@ -2288,7 +2351,7 @@ If the verification fails, the procedure is considered failed.
           </ol>
         </section>
       </section>
-      <section anchor="sec-sa-use-default-bcb">
+      <section anchor="sec-sa-use-ctx2">
         <name>Binding for BCB-AES-GCM Context</name>
         <t>
 This section defines how a secondary SA can be negotiated for and used by the confidentiality context of <xref target="RFC9173"/> with context identifier code point 2.
@@ -3311,6 +3374,24 @@ These entries are distinct and separate from the "EDHOC Error Codes" registry of
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9147.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9173.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9529.xml"/>
+        <reference anchor="github-dtn-bp-safe" target="https://github.com/BrianSipos/dtn-bp-safe/">
+          <front>
+            <title>Bundle Protocol (BP) Security Associations with Few Exchanges (SAFE)</title>
+            <author fullname="Brian Sipos" initials="B." surname="Sipos">
+              <organization abbrev="JHU/APL">The Johns Hopkins University Applied Physics Laboratory</organization>
+            </author>
+            <date/>
+          </front>
+        </reference>
+        <reference anchor="github-dtn-demo-agent" target="https://github.com/BrianSipos/dtn-demo-agent/">
+          <front>
+            <title>Demo Convergence Layer Agent</title>
+            <author fullname="Brian Sipos" initials="B." surname="Sipos">
+              <organization abbrev="JHU/APL">The Johns Hopkins University Applied Physics Laboratory</organization>
+            </author>
+            <date/>
+          </front>
+        </reference>
       </references>
     </references>
     <section>
@@ -3595,6 +3676,27 @@ The embedded byte strings contain the following SAFE messages:
       <name>Acknowledgments</name>
       <t>
 Thanks go to Leonardo Babun and Cherita Corbett of JHU/APL for pre-draft review and editing of this document.
+      </t>
+    </section>
+    <section removeInRFC="true" numbered="false">
+      <name>Implementation Status</name>
+      <t>
+[NOTE to the RFC Editor: please remove this section before publication, as well as the reference to <xref target="RFC7942"/>, <xref target="github-dtn-bp-safe"/>, and <xref target="github-dtn-demo-agent"/>.]
+      </t>
+      <t>
+This section records the status of known implementations of the
+protocol defined by this specification at the time of posting of
+this Internet-Draft, and is based on a proposal described in
+<xref target="RFC7942"/>.
+The description of implementations in this section is
+intended to assist the IETF in its decision processes in progressing
+drafts to RFCs. Please note that the listing of any individual
+implementation here does not imply endorsement by the IETF.
+Furthermore, no effort has been spent to verify the information
+presented here that was supplied by IETF contributors. This is not
+intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that
+other implementations can exist.
       </t>
     </section>
   </back>

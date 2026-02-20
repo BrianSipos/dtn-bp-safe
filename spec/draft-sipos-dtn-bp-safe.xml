@@ -1588,6 +1588,7 @@ Some examples of what KUS options can be defined by each Context binding are: a 
       <t>
 The packetization form defined in <xref target="sec-layers"/> allows multiple messages to be combined into a single ADU but this behavior is limited by support for the receiving entity, as defined and communicated in the <xref format="title" target="sec-data-cas"/> data item.
 Two examples of how this parameter affects activity sequencing is shown in <xref target="fig-safe-pipeline-large-cas"/> for a large CAS limit and <xref target="fig-safe-pipeline-small-cas"/> for a constraining limit of two.
+Note that when constrained, some activities can only begin with specific odd PDU numbers (from IA initiator) or even numbers (from the IA responder) so there are necessarily gaps between activities so less efficient use of the network.
       </t>
       <figure anchor="fig-safe-pipeline-large-cas">
         <name>Pipelining with large CAS limit</name>
@@ -1596,7 +1597,7 @@ PDU #1    #2    #3    #4    #5
      |     |     |     |     |
  (IA 0 --- 1 --- 2 --- 3)    |
      | (CI 0 --- 1 --- 2)    |
-     |     | (SC 0 --- 1 --- 2)
+     | (SC 0 --- 1 --- 2)    |
      |     | (SC 0 --- 1 --- 2)
      |     | (SC 0 --- 1 --- 2)
 
@@ -1606,10 +1607,10 @@ PDU #1    #2    #3    #4    #5
       <figure anchor="fig-safe-pipeline-small-cas">
         <name>Pipelining with small CAS limit</name>
         <artwork align="left" type="ascii-art">
-PDU #1    #2    #3    #4    #5    #6    #7    #8    #9    #10
-     |     |     |     |     |     |     |     |     |     |
- (IA 0 --- 1 --- 2 --- 3)(SC 0 --- 1 --- 2)(SC 0 --- 1 --- 2)
-     | (CI 0 --- 1 --- 2)(SC 0 --- 1 --- 2)
+PDU #1    #2    #3    #4    #5    #6    #7    #8    #9    #10   #11
+     |     |     |     |     |     |     |     |     |     |     |
+ (IA 0 --- 1 --- 2 --- 3)(SC 0 --- 1 --- 2)      (SC 0 --- 1 --- 2)
+     | (CI 0 --- 1 --- 2)      (SC 0 --- 1 --- 2)
 
           =----- time -----&gt;
         </artwork>

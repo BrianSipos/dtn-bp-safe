@@ -1,7 +1,4 @@
 
-start = eid-pattern / embed-eid-pattern
-
-
 eid-pattern = any-scheme-item / eid-pattern-set
 eid-pattern-set = [1* eid-pattern-item]
 eid-pattern-item = scheme-pat-item / any-ssp-item

@@ -16,6 +16,7 @@ alg
 anycast
 APL
 ARN
+ARQ
 ASB
 Babun
 BCB
@@ -28,7 +29,6 @@ bool
 BPA
 BPAs
 BPbis
-BPNAC
 BPSec
 BPv
 bstr
@@ -142,6 +142,7 @@ packetization
 parameterization
 Parameterization
 parameterizations
+PBNAC
 PCH
 pdu
 PDU
@@ -155,6 +156,10 @@ PKI
 PKIX
 plaintext
 pre
+prekey
+Prekey
+prekeys
+Prekeys
 PRF
 prk
 PRK
@@ -202,6 +207,7 @@ UDPCL
 uint
 unhandled
 unicast
+Unmanaged
 untagged
 Untrusted
 URI

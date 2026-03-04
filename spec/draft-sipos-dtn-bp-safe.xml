@@ -25,6 +25,7 @@
       <t>
 This document defines a protocol for negotiating scoped security associations between Bundle Protocol version 7 (BPv7) agents within a delay-tolerant network (DTN).
 Security associations are used to amortize the costs of asymmetric-keyed security operations and allow for efficient and high-throughput BPv7 security within a public key infrastructure.
+This protocol also provides for unilateral re-keying of established security associations in a delay-tolerant manner.
       </t>
     </abstract>
   </front>
@@ -32,41 +33,43 @@ Security associations are used to amortize the costs of asymmetric-keyed securit
     <section anchor="sec-intro">
       <name>Introduction</name>
       <t>
-The combination of Bundle Protocol version 7 (BPv7) <xref target="RFC9171"/> and Bundle Protocol Security (BPSec) <xref target="RFC9172"/> enables security to be applied at a fine-grained level to individual blocks of a bundle.
+The combination of Bundle Protocol version 7 (BPv7) <xref target="RFC9171"/> and Bundle Protocol Security (BPSec) <xref target="RFC9172"/> enables security to be applied at a fine-grained level to individual target blocks of a bundle.
       </t>
       <t>
-When operating within a Public Key Infrastructure Using X.509 (PKIX) <xref target="RFC5280"/> environment, in the absence of any kind of online protocol between the security source and expected acceptor(s) there are two extreme alternatives for the use of public keys for integrity and/or confidentiality:
+When operating within a Public Key Infrastructure Using X.509 (PKIX) <xref target="RFC5280"/> environment, in the absence of any kind of online protocol between the security source and expected acceptor(s) there are two extreme alternatives for the use of public keys for integrity and/or confidentiality described below.
       </t>
-      <ol>
-        <li>
+      <dl>
+        <dt>Independent Asymmetric Operations:</dt>
+        <dd>
           <t>
-The security source can use a public key of the security source directly for signing each target or use a public key of the security acceptor directly for each target (for either key agreement or key encapsulation).
+The security source can use a static public key of the security source directly for signing each target or use a public key of the security acceptor directly for each target (for either key agreement or key encapsulation).
           </t>
           <t>
 This is the strategy taken by the email security of S/MIME <xref target="RFC8551"/> and asymmetric algorithms of CBOR Object Signing and Encryption (COSE) <xref target="RFC9052"/>.
 While it ensures that each security operation can be processed independently it also introduces a large overhead because asymmetric-keyed algorithms are likely to be orders of magnitude more resource intensive than symmetric-keyed ones.
           </t>
-        </li>
-        <li>
+        </dd>
+        <dt>Unmanaged Derived Keys:</dt>
+        <dd>
           <t>
-For key types which support key exchange, such as elliptic curve (EC) keys, the security source can use a public key from both the security source and acceptor to perform a one-time key derivation of a shared secret, and from that secret a pseudorandom function (PRF) can be used to derive symmetric keys known to both entities.
+For key types which support key exchange, such as elliptic curve (EC) keys, the security source can use a static public key from both the security source and acceptor to perform a one-time key derivation of a shared secret, and from that secret a pseudorandom function (PRF) can be used to derive symmetric keys known to both entities.
           </t>
           <t>
 This allows the cost of one-time key exchange and PRF operations to be amortized across all of the cryptographic operations using the derived symmetric keys.
 But without any additional scoping added to the derived keys (<em>e.g.</em>, valid time of use or volume of data processed, restriction to specific ciphersuites or algorithms, etc.), the keys themselves will be vulnerable to overuse or cross-use vulnerabilities.
           </t>
           <t>
-This technique alone also provides confidentiality of the derived symmetric keys but does not intrinsically provide any authentication of the peer entity (via some identity binding to the associated private key).
+This technique alone also provides confidentiality of the derived symmetric keys but does not provide any authentication of the peer entity (via some identity binding to the associated private key).
 It also does not allow for forward secrecy because the original asymmetric keys need to be long-lived enough to handle all communications between the entities.
           </t>
-        </li>
-      </ol>
+        </dd>
+      </dl>
       <t>
 In order to both amortize the costs of asymmetric-keyed algorithms and to provide a separate means of mutually authenticating a peer BP node, including a proof-of-possession for the private key associated with a known public key, this document defines the Security Associations with Few Exchanges (SAFE) protocol.
       </t>
       <t>
 The SAFE protocol operation is explained in detail in <xref target="sec-prococol"/>.
-It operates as an "in-band" application over BPv7 as depicted in <xref target="fig-dtn-ip-stack"/>.
+It operates as an "in-band" control plane application over BPv7 as depicted in <xref target="fig-dtn-ip-stack"/>.
 This is similar to how the Internet Key Exchange Version 2 (IKEv2) protocol of <xref target="RFC7296"/> operates as an application over UDP/IP.
       </t>
       <figure anchor="fig-dtn-ip-stack">
@@ -296,41 +299,42 @@ A filter for BP traffic based on specific fields of the bundle primary block or 
     <section anchor="sec-prococol">
       <name>General Protocol Description</name>
       <t>
-The service of this protocol is the establishment and management of one or more secondary security association (SA) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific traffic.
+The service of this protocol is the establishment and management of one or more secondary security association (SA) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific data plane traffic.
+To avoid coupling each SAFE entity with any BPSec entity on the same node, SAFE PDUs use application-provided security instead of relying on BPSec.
       </t>
       <t>
-The initial confidential channel with forward secrecy, mutual authentication, and proof-of-possession is provided by an Ephemeral Diffie-Hellman Over COSE (EDHOC) session <xref target="RFC9528"/>.
-The EDHOC session also allows using external authorization data (EAD) items to confidentially transport SAND messages.
+The initial confidential channel between a pair of SAFE entities is provided by an Ephemeral Diffie-Hellman Over COSE (EDHOC) session <xref target="RFC9528"/>, which includes forward secrecy, mutual authentication, and proof-of-possession.
+EDHOC also allows using external authorization data (EAD) items to confidentially transport SAND messages during session establishment (see <xref target="sec-sa-use-safe-nopsa"/>), which avoids excess delay before negotiating secondary SAs.
       </t>
       <t>
-A side effect of the EDHOC session is the establishment of a primary SA between the two peers.
-The primary SA provides message confidentiality after the initial authentication EDHOC session.
+A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and initial symmetric keys for that primary SA.
+The primary SA keys provide SAFE message confidentiality after the initial authentication EDHOC session (see <xref target="sec-sa-use-safe-withpsa"/>).
 After a primary SA is established, this protocol allows creating secondary SAs through a single 1.5 round-trip activity without re-authenticating.
-It also allows managing established SAs, including symmetric key decommissioning and roll-over, in order to bound keys over time and over volume of processed data.
+It also allows managing established SAs, both primary and secondary, including life-cycle management of symmetric keys (re-keying with forward secrecy and decommissioning), in order to bound key use over time and over volume of processed data.
       </t>
       <t>
-The concepts and procedures of SAFE are similar in both form and function to the IP-level IKEv2 of <xref target="RFC7296"/> and MAC-level Port-Based Network Access Control (BPNAC) of <xref target="IEEE.802.1X-2020"/>.
+The concepts and procedures of SAFE are similar in both form and function to the IP-level IKEv2 of <xref target="RFC7296"/> and MAC-level Port-Based Network Access Control (PBNAC) of <xref target="IEEE.802.1X-2020"/>.
 These earlier protocols assume a low enough latency that chaining two-way exchanges over time is not a resource burden or source of major delay, and that if retransmissions are needed they can easily be performed at the exchange initiator side.
-Because SAFE is expected to operate in environments where one-way latency can be significant (see <xref target="RFC4838"/>), its structure in <xref target="sec-layers"/> is organized to avoid a sequence-of-exchanges pattern.
+Because SAFE is expected to operate in environments where one-way latency can be significant (see <xref target="RFC4838"/>), its <xref target="sec-layers">structure</xref> is organized to avoid a sequence-of-exchanges pattern and its <xref target="sec-act">activities</xref> are organized to minimize the number of steps (<em>i.e.</em>, round trips) in each.
       </t>
       <t>
-Instead of a two-way request--response pattern where all retransmission occurs from the requesting entity, the SAFE pattern is an activity sequence where the final message is purely acknowledgement that the activity has finished.
+Instead of a two-way request--response pattern where all retransmission occurs from the requesting entity, the SAFE pattern is an activity sequence where each step acknowledges the receipt of the previous step and the final message is purely acknowledgement that the activity has finished.
 SAFE separates its messaging sub-layer from its packetization sub-layer (see <xref target="sec-layers"/>) to allow messages from multiple simultaneous activities to be aggregated together into a single protocol data unit (PDU).
-For an individual activity sequence this is results in more messages than two-way exchanges, but it enables pipelining of messages and retransmission from either side of an activity conversation.
+For an individual activity sequence this results in more total messages than two-way exchanges, but it enables pipelining of messages and selective retransmission (ARQ) of individual encoded messages from either side of an activity conversation.
       </t>
       <section anchor="sec-protocol-edhoc">
         <name>Relationship to EDHOC</name>
         <t>
 This protocol embeds EDHOC as the messaging structure and behavior of the <xref format="title" target="sec-act-ia"/> activity type.
 Because the IA activity is the very beginning of a conversation between two SAFE entities, the packetization behavior during the IA activity is a special case containing a single EDHOC message in each PDU.
-This also means that during the IA activity EDHOC is responsible for confidentiality of SAFE data.
-After the IA has finished and a primary SA is established, confidentiality is provided by an application-layer use of COSE encryption (see <xref target="sec-layers-agg"/>).
+This also means that during the IA activity EDHOC is responsible for confidentiality of SAFE data as EAD items.
+After the IA has finished and a primary SA is established, confidentiality is provided by an application-layer use of COSE encryption (see <xref target="sec-layers-agg"/>) using EDHOC session parameters.
         </t>
       </section>
       <section anchor="sec-protocol-bpsec">
         <name>Relationship to BPSec</name>
         <t>
-The reason for establishing SAs in the first place is to be able to provide symmetric session keys to be used by BPSec for security operations on individual target blocks within specific bundles as described in <xref target="sec-intro-usecases"/>.
+The reason for establishing SAs in the first place is to be able to provide symmetric session keys to be used by BPSec for data plane security operations on individual target blocks within specific bundles as described in <xref target="sec-intro-usecases"/>.
 Part of the scoping of each SA includes a BPSec security context identifier and its options for which each derived symmetric key is authorized to be used.
         </t>
         <t>
@@ -338,7 +342,7 @@ A secondary SA is scoped by the following aspects which inform BPSec policy on e
         </t>
         <dl newline="true">
           <dt>Security Mode:</dt>
-          <dd>This determines when and where security operations are sourced and accepted within the peers.</dd>
+          <dd>This determines when and where security operations are sourced and accepted within each node.</dd>
           <dt>Validity Time Interval:</dt>
           <dd>This bounds the SA to an interval of time.</dd>
           <dt>Endpoint Selectors:</dt>
@@ -401,6 +405,9 @@ In order to set appropriate retransmission timers, the local entity needs to kno
               <td>The transport EID for the SAFE entity on the peer node.</td>
             </tr>
             <tr>
+              <td align="center" colspan="2">Properties below are based on the above key column.</td>
+            </tr>
+            <tr>
               <td>Round-Trip Time</td>
               <td>
 The expected full round-trip time between a sent message and an acknowledgement.
@@ -440,8 +447,8 @@ For the two stores of credential types in the Participating Peers information ba
 One of the "COSE Header Parameters" registry values from <xref target="IANA-COSE"/> which identifies a credential type: 
             </t>
             <ul spacing="compact">
-              <li>c5t (22), c5u (23), c5c (25) to identify a C509 certificate following the profile of <xref target="sec-act-ia-pkix"/></li>
-              <li>x5t (34), x5u (35), x5chain (33) to identify an X509 certificate following the profile of <xref target="sec-act-ia-pkix"/></li>
+              <li>c5t (22), c5u (23), c5c (25) to identify a C509 end-entity certificate</li>
+              <li>x5t (34), x5u (35), x5chain (33) to identify an X509 end-entity certificate</li>
               <li>kid (4) to identify a pre-shared symmetric key (PSK) <cref>leave this in?</cref></li>
             </ul>
           </dd>
@@ -451,7 +458,7 @@ One or more type-specific root authority credentials to use as trust anchors for
           </dd>
           <dt>Validated Credentials:</dt>
           <dd>
-A set of credentials which has already been validated in accordance with the profile in <xref target="sec-act-ia-pkix"/> against the trust anchors in this entry.
+A set of credentials which has already been validated in accordance with the profile in <xref target="sec-pkix-profile"/> against the trust anchors in this entry.
 Each of these credentials is supplied from outside of the SAFE entity.
 For TX credentials, this represents local identity configuration for the peer.
 For RX credentials, this is from peer discovery or pre-agreement with the peer.
@@ -485,6 +492,9 @@ Each SAFE entity maintains a table of in-progress activities and their associate
               <td>The index, unique to the initiator, for the activity.</td>
             </tr>
             <tr>
+              <td align="center" colspan="2">Properties below are based on the above key columns.</td>
+            </tr>
+            <tr>
               <td>Last Step Transmitted (LTX)</td>
               <td>The step of the activity which is associated with the last message sent to the peer.</td>
             </tr>
@@ -505,8 +515,10 @@ After the final message of an activity is received, the associated table row is 
         <t>
 Each primary SA allows SAFE entities to provide PDU-level confidentiality and is used as the source of a shared secret from which secondary SAs can be derived.
 The state of each primary SA known to the local entity has logical columns as indicated in <xref target="tab-info-sa-pri"/>.
-The key information of a primary SA will contain exactly one key for each direction <cref>TBD</cref>.
-The primary SA has no specific endpoint selectors because each is used for security between the SAFE entities themselves rather than any other traffic.
+        </t>
+        <t>
+A primary SA covers traffic in both directions between the two peers participating in the SA.
+The primary SA has no specific endpoint selectors because each is used for security between the SAFE entities themselves rather than any other, data plane traffic.
         </t>
         <table align="center" anchor="tab-info-sa-pri">
           <name>Primary Security Association Columns</name>
@@ -521,6 +533,7 @@ The primary SA has no specific endpoint selectors because each is used for secur
               <td>Local SAI</td>
               <td>
 The locally-generated SA identifier for this entry.
+This Local SAI alone (within the local SAFE entity) is a unique identifier for the primary SA.
               </td>
             </tr>
             <tr>
@@ -531,7 +544,11 @@ The locally-generated SA identifier for this entry.
               <td>Peer SAI</td>
               <td>
 The peer-generated SA identifier for this entry.
+The combination of Peer EID and Peer SAI together form a unique identifier for the primary SA.
               </td>
+            </tr>
+            <tr>
+              <td align="center" colspan="2">Properties below are based on the above key columns.</td>
             </tr>
             <tr>
               <td>AEAD Algorithm</td>
@@ -545,6 +562,22 @@ This applies to SAFE confidential PDU processing defined in <xref target="sec-sa
               <td>
 The "application hash algorithm" from the EDHOC cipher suite negotiated as part of the IA activity.
 This applies to the <tt>SAFE_KDF</tt> function defined in <xref target="sec-deriv-ssa-create"/>.
+              </td>
+            </tr>
+            <tr>
+              <td>Local Private Prekeys</td>
+              <td>
+A set of one-time-use private asymmetric key material used to process received SA Rekey activities.
+These private keys are generated locally and their associated public prekeys are communicated to the peer entity via SA Prekey activities.
+Each private prekey has the information defined in <xref target="tab-info-sa-pri-localpre"/> and is scoped within a single primary SA.
+              </td>
+            </tr>
+            <tr>
+              <td>Peer Public Prekeys</td>
+              <td>
+A set of one-time-use public key material used to process and initiate SA Rekey activities.
+These public keys are received from the peer entity through SA Prekey activities.
+Each public prekey has the information defined in <xref target="tab-info-sa-pri-peerpre"/> and is scoped within a single primary SA.
               </td>
             </tr>
             <tr>
@@ -566,6 +599,66 @@ The associated key material is derived from the shared secret created during an 
               <td>
 Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA1</tt> defined in <xref target="sec-deriv-psa-create"/>.
 This is used to derive further values for secondary SAs as defined in <xref target="sec-deriv-ssa-create"/> and context-specific key derivations.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <t>
+The information in <xref target="tab-info-sa-pri-localpre"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
+An entity <bcp14>SHOULD</bcp14> remove any Local Private Prekey when the wall-clock time advances past the end of its validity time interval.
+        </t>
+        <table align="center" anchor="tab-info-sa-pri-localpre">
+          <name>Local Private Prekeys Columns</name>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Key ID</td>
+              <td>A locally unique byte string identifier for this key.</td>
+            </tr>
+            <tr>
+              <td>Validity Time Interval</td>
+              <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the local entity.</td>
+            </tr>
+            <tr>
+              <td>Private Key</td>
+              <td>
+The actual private key material and intrinsic metadata such as acceptable algorithm types.
+This logically corresponds to COSE Key information for a private key.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <t>
+The information in <xref target="tab-info-sa-pri-peerpre"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
+An entity <bcp14>SHOULD</bcp14> remove any Peer Public Prekey when the wall-clock time advances past the end of its validity time interval.
+        </t>
+        <table align="center" anchor="tab-info-sa-pri-peerpre">
+          <name>Peer Public Prekeys Columns</name>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Peer Key ID</td>
+              <td>A peer-defined unique byte string identifier for this key.</td>
+            </tr>
+            <tr>
+              <td>Validity Time Interval</td>
+              <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the peer entity.</td>
+            </tr>
+            <tr>
+              <td>Public Key</td>
+              <td>
+The actual public key material and intrinsic metadata such as acceptable algorithm types.
+This logically corresponds to COSE Key information for a public key.
               </td>
             </tr>
           </tbody>
@@ -991,7 +1084,7 @@ safe-pdu-edhoc //= (
     edhoc_234 // error
 )
 ; Equivalent to (message_2 // message_3 // message_4) from RFC 9528
-; Encoded SAFE messages can be present in EAD items
+; Encoded SAFE messages can be present as EAD items
 edhoc_234 = bstr
 
 safe-pdu-confidential //= (
@@ -1012,7 +1105,7 @@ safe-pdu-aad = (
       </figure>
       <t>
 Within restrictions defined for each message type, multiple messages <bcp14>MAY</bcp14> be combined into a single PDU (as either EDHOC EAD or SAFE plaintext).
-Due to the logic of the <xref format="title" target="sec-act-ia"/> sequencing, only one EDHOC session can make progress between two endpoints at any time so there is no concept of an EDHOC message embedded within an EAD item.
+Due to the logic of the <xref format="title" target="sec-act-ia"/> sequencing, only one EDHOC session can make progress between two endpoints at any time so there is no concept of a full EDHOC PDU embedded within an EAD item, only individual messages.
       </t>
       </section>
       <section anchor="sec-layers-transport">
@@ -1077,7 +1170,9 @@ There is no restriction on any intermediate security handling of SAFE PDUs betwe
         </t>
         <t>
 The CDDL corresponding to this activity type are the first two variations of <tt>safe-pdu-data</tt> from <xref target="sec-layers-agg"/>.
-Additionally, the <em>EAD</em> payload of the EDHOC messages are extended to be able to carry encoded SAFE messages during the IA activity based on the <tt>safe-msg-bstr</tt> rule defined in <xref target="sec-layers-msg"/>.
+Additionally, the <em>EAD</em> payload of the EDHOC messages are extended to be able to confidentially carry encoded SAFE messages during the IA activity.
+Any number of EAD items of label <cref>TBA5</cref> and value matching the <tt>safe-msg-bstr</tt> rule (defined in <xref target="sec-layers-msg"/>) <bcp14>MAY</bcp14> be present in EDHOC lists <tt>EAD_2</tt>, <tt>EAD_3</tt>, and <tt>EAD_4</tt>.
+EAD items of label <cref>TBA5</cref> <bcp14>SHALL NOT</bcp14> be present in <tt>EAD_1</tt>, which is transported as plaintext.
         </t>
         <section anchor="sec-act-ia-edhoc">
           <name>EDHOC Requirements</name>
@@ -1090,12 +1185,6 @@ When the Message 3 payload is received by the responder, both peers have authent
           </t>
           <t>
 Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-psa-create"/>.
-          </t>
-        </section>
-        <section anchor="sec-act-ia-pkix">
-          <name>PKIX Profile</name>
-          <t>
-<cref>TBD based on <xref section="4" target="I-D.ietf-dtn-bpsec-cose"/></cref>
           </t>
         </section>
       </section>
@@ -1362,7 +1451,7 @@ Each proposal <bcp14>SHALL</bcp14> take the form of a CBOR map.
 When multiple proposals are present, they <bcp14>SHALL</bcp14> take the form of a CBOR array of proposal maps.
       </t>
       <sourcecode type="cddl">
-safe-proposals = [data-map] / [+ data-map]
+safe-proposals = data-map / [+ data-map]
       </sourcecode>
       <section anchor="sec-data-ete">
         <name>Error Type Enumeration (ETE)</name>
@@ -1575,7 +1664,7 @@ The initial set of supported contexts is defined in <xref target="sec-sa-use"/>.
 safe-kus = $safe-kus .within safe-kus-struct
 safe-kus-struct = [
     ctxid: bpsec-ctxid,
-    options: data-map / [+ data-map] .within safe-proposals
+    options: safe-proposals
 ]
 </sourcecode>
         <t>
@@ -1823,7 +1912,7 @@ Detailed requirements about how the secondary SA key information is used by the 
 Part of the purpose of establishing a primary SA with a peer is to derive an encryption key (with associated base IV) to enable SAFE message confidentiality in each direction.
 Similar to how EDHOC cryptographic functions make use of COSE primitives but not COSE message encodings, SAFE reuses COSE primitives for its own end-to-end security.
         </t>
-        <section>
+        <section anchor="sec-sa-use-safe-nopsa">
           <name>Without a Primary SA</name>
           <t>
 These conditions apply even if there is an existing Primary SA which is being superseded by a new IA activity.
@@ -1844,28 +1933,34 @@ After the IA activity has completed (initiator has sent, responder has received)
           </t>
           <ol>
             <li>
+Iterate through and encode a CBOR sequence of byte strings items for all messages in the plaintext.
+            </li>
+            <li>
 Increment the Partial IV counter associated with the peer entity.
             </li>
             <li>
 Encode the Partial IV as a minimum-length byte string in network byte order.
             </li>
             <li>
-Iterate through and encode a CBOR sequence of byte strings items for all messages in the plaintext.
-            </li>
-            <li>
               <t>Internally generate and encrypt a COSE_Encrypt0 object as defined in <xref section="5.3" target="RFC9052"/> using the following inputs:
               </t>
               <dl newline="true">
                 <dt>Protected Header:</dt>
-                <dd>An empty byte string <tt>h''</tt></dd>
+                <dd>
+                  <t>An encoded map containing the following pairs:</t>
+                  <dl newline="true">
+                    <dt>alg (1):</dt>
+                    <dd>The "application AEAD algorithm" of the EDHOC cipher suite from the Primary SA.</dd>
+                    <dt>kid context (10):</dt>
+                    <dd>The Peer SAI of the Primary SA as a direct byte string.</dd>
+                  </dl>
+                </dd>
                 <dt>Unprotected Header:</dt>
                 <dd>
                   <t>A map containing the following pairs:</t>
                   <dl newline="true">
-                    <dt>alg (1):</dt>
-                    <dd>The "application AEAD algorithm" of the EDHOC cipher suite from the Primary SA</dd>
                     <dt>Partial IV (6):</dt>
-                    <dd>The Partial IV value computed in the previous step</dd>
+                    <dd>The Partial IV value computed in the previous step.</dd>
                   </dl>
                 </dd>
                 <dt>key:</dt>
@@ -1873,7 +1968,7 @@ Iterate through and encode a CBOR sequence of byte strings items for all message
                 <dt>plaintext:</dt>
                 <dd>The encoded plaintext from above</dd>
                 <dt><tt>external_aad</tt>:</dt>
-                <dd>A byte string encoding the CBOR Sequence <tt>safe-pdu-aad</tt> (as defined in <xref target="fig-safe-pdu"/>, and using the same encoding as the PDU) <cref>No binding to transport source EID??</cref></dd>
+                <dd>A byte string encoding the CBOR Sequence <tt>safe-pdu-aad</tt> (as defined in <xref target="fig-safe-pdu"/>, and using the same encoding as the PDU) <cref>No binding to transport source or destination EID?? Should concatenate these in AAD.</cref></dd>
               </dl>
             </li>
             <li>
@@ -1911,23 +2006,29 @@ Internally generate and decrypt a COSE_Encrypt0 object as defined in <xref secti
               </t>
               <dl newline="true">
                 <dt>Protected Header:</dt>
-                <dd>An empty byte string <tt>h''</tt></dd>
+                <dd>
+                  <t>An encoded map containing the following pairs:</t>
+                  <dl newline="true">
+                    <dt>alg (1):</dt>
+                    <dd>The "application AEAD algorithm" of the EDHOC cipher suite from the Primary SA.</dd>
+                    <dt>kid context (10):</dt>
+                    <dd>The Local SAI of the Primary SA as a direct byte string.</dd>
+                  </dl>
+                </dd>
                 <dt>Unprotected Header:</dt>
                 <dd>
                   <t>A map containing the following pairs:</t>
                   <dl newline="true">
-                    <dt>alg (1):</dt>
-                    <dd>The "application AEAD algorithm" of the EDHOC cipher suite from the Primary SA</dd>
                     <dt>Partial IV (6):</dt>
-                    <dd>The <tt>partial-iv</tt> value from the SAFE PDU header</dd>
+                    <dd>The <tt>partial-iv</tt> value from the SAFE PDU header.</dd>
                   </dl>
                 </dd>
                 <dt>key:</dt>
                 <dd>Either <tt>K_IR</tt> or <tt>K_RI</tt> of <xref target="sec-deriv-ssa-create"/> from the Secondary SA for the initiator or responder respectively.</dd>
                 <dt>ciphertext:</dt>
-                <dd>The <tt>ciphertext</tt> field of the PDU payload</dd>
+                <dd>The <tt>ciphertext</tt> field of the PDU payload.</dd>
                 <dt><tt>external_aad</tt>:</dt>
-                <dd>A byte string encoding the CBOR Sequence <tt>safe-pdu-aad</tt> (as defined in <xref target="fig-safe-pdu"/>, and using the same encoding as the PDU)</dd>
+                <dd>A byte string encoding the CBOR Sequence <tt>safe-pdu-aad</tt> (as defined in <xref target="fig-safe-pdu"/>, and using the same encoding as the PDU).</dd>
               </dl>
               <t>
 If decryption fails then <cref>TBD</cref>.
@@ -2653,7 +2754,7 @@ Within the registry group of <xref target="IANA-URI"/>, the registry titled "'ip
           </thead>
           <tbody>
             <tr>
-              <td>TBA3</td>
+              <td><cref>TBA3</cref></td>
               <td>BPv7 SAFE Messaging</td>
               <td>[This specification]</td>
             </tr>
@@ -2676,7 +2777,7 @@ Within the registry group of <xref target="IANA-EDHOC"/>, the registry titled "E
           </thead>
           <tbody>
             <tr>
-              <td>TBA4</td>
+              <td><cref>TBA4</cref></td>
               <td>Derived BPv7 SAFE Secret</td>
               <td>[This specification]</td>
             </tr>
@@ -2698,8 +2799,8 @@ Within the registry group of <xref target="IANA-EDHOC"/>, the registry titled "E
           <tbody>
             <tr>
               <td>BPv7 SAFE</td>
-              <td>TBA5</td>
-              <td>Set of Create messages for BPv7 SAFE</td>
+              <td><cref>TBA5</cref></td>
+              <td>A single message for BPv7 SAFE</td>
               <td>[This specification]</td>
             </tr>
           </tbody>

@@ -44,8 +44,9 @@ ciphersuites
 ciphertext
 Ciphertext
 CLA
-ClientHello
-CLs
+CKs
+KIDs
+lifecycle
 clset
 codepoints
 connectionless
@@ -115,6 +116,7 @@ Keepalive
 KeyUpdate
 kty
 KUS
+Lifecycle
 LLC
 LRX
 lt
@@ -164,6 +166,7 @@ PRF
 prk
 PRK
 PRKs
+PSAs
 Pseudocode
 pseudorandom
 PSK
@@ -191,6 +194,7 @@ SAs
 SCs
 SHA
 SMS
+SSAs
 SSL
 STARTTLS
 substate

@@ -74,22 +74,22 @@ This is similar to how the Internet Key Exchange Version 2 (IKEv2) protocol of <
       </t>
       <figure anchor="fig-dtn-ip-stack">
         <name>The Locations of SAFE and BP above the Internet Protocol Stack</name>
-        <artwork align="center" type="ascii-art">
+        <artwork align="center" type="ascii-art"><![CDATA[
 +-----------------------+
 | Security Associations | -\
 |         (SAFE)        |   |
 +-----------------------|   |
-|      BPv7 + BPSec     |   -&gt; Application Layer
+|      BPv7 + BPSec     |   -> Application Layer
 +-----------------------+   |
 |   CL + opt. security  | -/
 +-----------------------+
-|      TCP/UDP/etc.     | ---&gt; Transport Layer
+|      TCP/UDP/etc.     | ---> Transport Layer
 +-----------------------+
-|       IPv4/IPv6       | ---&gt; Network Layer
+|       IPv4/IPv6       | ---> Network Layer
 +-----------------------+
-|  Link-Layer Protocol  | ---&gt; Link Layer
+|  Link-Layer Protocol  | ---> Link Layer
 +-----------------------+
-</artwork>
+]]></artwork>
       </figure>
       <section>
         <name>Scope</name>
@@ -133,7 +133,7 @@ This logic is indicated in later diagrams by the "(Decide)" label inside a BPA b
         </t>
         <figure anchor="fig-bpa-points">
           <name>BP Agent data plane interaction points</name>
-          <artwork align="center" type="ascii-art">
+          <artwork align="center" type="ascii-art"><![CDATA[
       +---------------+                  +---------------+
       |   Registered  |                  |   Registered  |
       | Application(s)|                  | Application(s)|
@@ -152,7 +152,7 @@ Transmit|           |Deliver       Transmit|           |Deliver
 ~---------+       +-----------~  ~---------+-+       +--------~
           |       |     Forwarding Hop(s)    |       |         
 ~---------+       +-----------~  ~-----------+       +--------~
-          </artwork>
+]]></artwork>
         </figure>
         <t>
 This document considers two principal use cases to narrow the scope of discussion, each described in the following subsections.
@@ -170,7 +170,7 @@ The negotiated security service is sourced immediately upon bundle creation (aft
           </t>
           <figure anchor="fig-usecase-etoe">
             <name>End-to-End security flows</name>
-            <artwork align="center" type="ascii-art">
+            <artwork align="center" type="ascii-art"><![CDATA[
         |                                              ^
 Transmit|                                              |Deliver
         v                                              |       
@@ -187,7 +187,7 @@ Transmit|                                              |Deliver
                   +-----------~  ~---------+-+       
                   |     Forwarding Hop(s)    |       
                   +-----------~  ~-----------+       
-            </artwork>
+]]></artwork>
           </figure>
           <t>
 The purpose of this mode is to ensure that specific traffic has integrity or confidentiality protection for its entire lifetime, applied as close to the endpoints as possible.
@@ -206,7 +206,7 @@ The negotiated security service is sourced immediately before forwarding (specif
           </t>
           <figure anchor="fig-usecase-onehop">
             <name>One-Hop security flows</name>
-            <artwork align="center" type="ascii-art">
+            <artwork align="center" type="ascii-art"><![CDATA[
         |                                          ^
 Transmit|                                          |Deliver
         v                                          |       
@@ -223,7 +223,7 @@ Transmit|                                          |Deliver
                   +--------------------+-+       
                   |    Forwarding Hop    |       
                   +----------------------+       
-            </artwork>
+]]></artwork>
           </figure>
           <t>
 The purpose of this mode is to supplement security mechanisms (if any) provided by the forwarding convergence layer adapter (CLA).
@@ -312,6 +312,32 @@ The primary SA keys provide SAFE message confidentiality after the initial authe
 After a primary SA is established, this protocol allows creating secondary SAs through a single 1.5 round-trip activity without re-authenticating.
 It also allows managing established SAs, both primary and secondary, including life-cycle management of symmetric keys (re-keying with forward secrecy and decommissioning), in order to bound key use over time and over volume of processed data.
       </t>
+      <figure>
+        <name>Relationships between SAs and their key material</name>
+        <artwork align="center" type="ascii-art"><![CDATA[
++-----------------------------------------+               
+|              +----------+  +----------+ |               
+| Primary SA   |RX Content|  |TX Content| |               
+| * SAIs       |Keys #1..N|  |Keys #1..M| |               
+| * Peer EID   +----------+  +----------+ |               
+| * PRK        +----------+  +----------+ |               
+|              |RX Prekeys|  |TX Prekeys| |               
+|              |  #1..P   |  |  #1..Q   | |               
+|              +----------+  +----------+ |               
++----+------------------------------------+               
+     |                                                    
+     |    +-------------------------------------------+   
+     |    |                +----------+  +----------+ |   
+     +----+ Secondary SA   |RX Content|  |TX Content| |   
+     :    | * SAIs         |Keys #1..N|  |Keys #1..M| |   
+     :    | * Modes        +----------+  +----------+ |   
+     :    | * Selectors    +----------+  +----------+ |   
+    more  | * PRK          |RX Prekeys|  |TX Prekeys| |   
+    SSAs  |                |  #1..P   |  |  #1..Q   | |   
+          |                +----------+  +----------+ |   
+          +-------------------------------------------+   
+]]></artwork>
+      </figure>
       <t>
 The concepts and procedures of SAFE are similar in both form and function to the IP-level IKEv2 of <xref target="RFC7296"/> and MAC-level Port-Based Network Access Control (PBNAC) of <xref target="IEEE.802.1X-2020"/>.
 These earlier protocols assume a low enough latency that chaining two-way exchanges over time is not a resource burden or source of major delay, and that if retransmissions are needed they can easily be performed at the exchange initiator side.
@@ -322,6 +348,56 @@ Instead of a two-way request--response pattern where all retransmission occurs f
 SAFE separates its messaging sub-layer from its packetization sub-layer (see <xref target="sec-layers"/>) to allow messages from multiple simultaneous activities to be aggregated together into a single protocol data unit (PDU).
 For an individual activity sequence this results in more total messages than two-way exchanges, but it enables pipelining of messages and selective retransmission (ARQ) of individual encoded messages from either side of an activity conversation.
       </t>
+      <t>
+Some SAFE activities involve negotiating of a shared state between an initiator and a responder using two data-bearing steps and a final acknowledgement.
+Many activities are unilateral, meaning they consist of a single data-bearing step from the initiator followed by a single responder acknowledgement.
+Having activities be unilateral makes the overall protocol more delay-tolerant.
+      </t>
+      <section>
+        <name>Content Key Lifecycle Management</name>
+        <t>
+Within each SA, both primary and secondary, there are some number of content keys (CKs) available for use in the data plane.
+The primary SA content keys are used for AEAD of SAFE PDUs themselves, while secondary SA content keys are for BPSec operations on other traffic.
+        </t>
+        <t>
+The primary SA has an implicit pair of content keys created as part of the Initial Authentication (IA) activity, each with a key identifier (KID) derived from and the same length as the primary security association identifier (SAI).
+All other KIDs of primary and secondary SAs are explicitly chosen by the entity which would use that key as the security source (<em>i.e.</em>, the TX side of the data plane).
+        </t>
+        <t>
+Within a single SA, the lifecycle of a single CK is depicted in <xref target="fig-ck-lifecycle"/> where "Entity A" is the TX end of that key and "Entity B" is the RX end.
+The optional CK Prekey activity and its public key data is used to ensure forward secrecy of the CK when desired by the TX end.
+The CK Discard activity is used to inform the RX end when the CK will no longer be used for security operations and it is safe to be discarded.
+        </t>
+        <figure anchor="fig-ck-lifecycle">
+          <name>Lifecycle of SA content keys</name>
+          <artwork align="center" type="ascii-art"><![CDATA[
++--------+               +--------+      
+|Entity A|               |Entity B|      
+|(TX end)|               |(RX end)|
++--------+               +--------+      
+    |                        |           
+    |<===== SA Creation ====>|           
+    |                        |           
+    |        optional        |           
+    |        CK Prekey       |           
+    |<-----------------------+           
+    |- - - - - - - - - - - ->|           
+    |                        |           
+    |        CK Create       |           
+    +----------------------->|           
+    |<- - - - - - - - - - - -|           
+    |                        |           
+    |        Use CK in       |           
+    |        data plane      |           
+    +----------------------->|           
+    +----------------------->|           
+    |                        |           
+    |        CK Discard      |           
+    +----------------------->|           
+    |<- - - - - - - - - - - -|           
+]]></artwork>
+        </figure>
+      </section>
       <section anchor="sec-protocol-edhoc">
         <name>Relationship to EDHOC</name>
         <t>
@@ -791,39 +867,39 @@ This sub-layer is used to embed either a single EDHOC message or single SAFE cip
       </dl>
       <figure anchor="fig-safe-sublayers">
         <name>Breakdown of sub-layers within SAFE</name>
-        <artwork align="center" type="ascii-art">
+        <artwork align="center" type="ascii-art"><![CDATA[
 +-------------------------------------------+
-| Data Item 1 |      ...      | Data Item N | &lt;- Activity
+| Data Item 1 |      ...      | Data Item N | <- Activity
 +-------------------------------------------+    Data
  \__________________________________       |
                                     \      |
 +-------------------------------------------+
 | Act. Idx. | Act. Step | Act. Type | Data  |
 +-------------------------------------------+
-|                 SAFE Message              | &lt;- Messaging
+|                 SAFE Message              | <- Messaging
 +-------------------------------------------+    and Retransmission
  \__           ____________________________/
     \         /
 +-------------------------------------+
-| Msg. 1 bstr |...| Msg. N bstr | pad |      &lt;- Message Aggregation
+| Msg. 1 bstr |...| Msg. N bstr | pad |      <- Message Aggregation
 +-------------------------------------+
 |                 Plaintext           |
 + ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ +
-|                 Ciphertext          + tag | &lt;- Message Security
+|                 Ciphertext          + tag | <- Message Security
 +-------------------------------------------+
  \____________________                     |
                       \                    |
 +-------------------------------------------+
 | Version | PIV | SAI | EDHOC / Ciphertext  |
 +-------------------------------------------+
-|                 SAFE PDU                  | &lt;- Packetization
+|                 SAFE PDU                  | <- Packetization
 +-------------------------------------------+
  \___________________________              /
                              \            /
 +-------------------------------------------+
-|  Bundle                 |  Payload Block  | &lt;- Transport
+|  Bundle                 |  Payload Block  | <- Transport
 +-------------------------------------------+    and Security
-</artwork>
+]]></artwork>
       </figure>
       <section anchor="sec-layers-seq">
         <name>Activity Sequencing</name>
@@ -843,7 +919,7 @@ A <xref format="title" target="sec-act-ia"/> is the first activity, followed by 
         </t>
         <figure anchor="fig-safe-pipeline-example">
           <name>Pipelining of Activities</name>
-          <artwork align="center" type="ascii-art">
+          <artwork align="center" type="ascii-art"><![CDATA[
 Node A     A     A     A     A
      |     ^     |     ^     |
      v     |     v     |     v
@@ -856,8 +932,8 @@ PDU #1    #2    #3    #4    #5
      |     | (SC 0 --- 1 --- 2)
      |     | (SC 0 --- 1 --- 2)
 
-          =----- time -----&gt;
-          </artwork>
+          =----- time ----->
+]]></artwork>
         </figure>
       </section>
       <section anchor="sec-layers-msg">
@@ -938,7 +1014,7 @@ label = int16
 value = any
 
 ; Signed integer that fits in 16-bit two's complement form
-int16 = (-32768 .. 32767) .within int
+int16 = -32768 .. 32767
         </sourcecode>
       </section>
       <section anchor="sec-layers-retrans">
@@ -954,7 +1030,7 @@ If a transition has a specific trigger, it is indicated by square bracket text.
         </t>
         <figure anchor="fig-safe-activity-states">
           <name>Example activity states for a two-step activity</name>
-          <artwork align="center" type="ascii-art">
+          <artwork align="center" type="ascii-art"><![CDATA[
              Initiator                         Responder       
         +-----------------+               +-----------------+  
         |                 |               |                 |  
@@ -962,7 +1038,7 @@ If a transition has a specific trigger, it is indicated by square bracket text.
         |                 |     Step 0    |                 |  
         +--------+--------+    Message    +--------+--------+  
       Re-TX      |            ident+data     [RX 0]|           
-     +--------+  | TX 0    ~~~~~~~~~~~~~~&gt;         |           
+     +--------+  | TX 0    ~~~~~~~~~~~~~~>         |           
      |        v  v                                 v           
      |  +-----------------+               +-----------------+  
      |  |                 |               |                 |  
@@ -970,7 +1046,7 @@ If a transition has a specific trigger, it is indicated by square bracket text.
  [timer]|                 |     Step 1    |                 |  
         +--------+--------+    Message    +--------+--------+  
                  |[RX 1]      ident+data           |         Re-TX
-                 |         &lt;~~~~~~~~~~~~~~    TX 1 |  +--------+
+                 |         <~~~~~~~~~~~~~~    TX 1 |  +--------+
                  v                                 v  v        |
         +-----------------+               +-----------------+  |
         |                 |               |                 |  |
@@ -978,7 +1054,7 @@ If a transition has a specific trigger, it is indicated by square bracket text.
         |                 |     Step 2    |                 |[timer]
         +--------+--------+    Message    +--------+--------+  
                  |              ident        [RX 2]|           
-                 | TX 2    ~~~~~~~~~~~~~~&gt;         |           
+                 | TX 2    ~~~~~~~~~~~~~~>         |           
                  v                                 v           
         +-----------------+               +-----------------+  
         |                 |               |                 |  
@@ -992,7 +1068,7 @@ If a transition has a specific trigger, it is indicated by square bracket text.
         | {-1,-1} Removed |               | {-1,-1} Removed |  
         |                 |               |                 |  
         +-----------------+               +-----------------+  
-          </artwork>
+]]></artwork>
         </figure>
         <t keepWithNext="true">
 Based on an existing <xref target="sec-info-act">activity state</xref> when the last LTX step is less than the LRX step, or when the initiator starts the activity, or an associated retransmission timer expires, the entity <bcp14>SHALL</bcp14> perform the following:
@@ -1048,7 +1124,7 @@ The version specific header defined in this document <bcp14>SHALL</bcp14> be the
         <dt>Partial IV:</dt>
         <dd>A partial initialization vector (IV) byte string or <tt>null</tt> value</dd>
         <dt>Receiver SAI:</dt>
-        <dd>A receiver security association identifier (SAI) byte string or integer (based on EDHOC compressed byte string encoding) or <tt>true</tt> value</dd>
+        <dd>A receiver SAI byte string or integer (based on EDHOC compressed byte string encoding) or <tt>true</tt> value</dd>
       </dl>
       <t>
 When the Partial IV is <tt>null</tt>, the payload <bcp14>SHALL</bcp14> be one of the EDHOC messages defined in <xref target="RFC9528"/> and handled in accordance with <xref target="sec-act-ia"/>.
@@ -1147,7 +1223,7 @@ Because this is the initializing activity for all other SAFE interactions, and o
 The retransmission logic and the BP transport of <xref target="sec-layers"/> satisfies the EDHOC requirements of <xref section="3.4" target="RFC9528"/>.
         </t>
         <t>
-Even though the Initial Authentication (IA) activity does not follow the same messaging structure, it does have an activity identifier allocated to it in <xref target="tab-iana-safe-activity"/> to allow its state to be tracked in accordance with <xref target="sec-info-act"/>.
+Even though the IA activity does not follow the same messaging structure, it does have an activity identifier allocated to it in <xref target="tab-iana-safe-activity"/> to allow its state to be tracked in accordance with <xref target="sec-info-act"/>.
 The IA activity <bcp14>SHALL</bcp14> be identified by activity type 0.
         </t>
         <t>
@@ -1519,10 +1595,11 @@ This means that a single SA has two SAIs used to identify it, one from each enti
         </t>
         <t>
 An SAI <bcp14>SHALL</bcp14> be treated as an opaque byte string as its internal representation and comparison logic.
+An SAI <bcp14>SHALL</bcp14> be limited to a length between 0 and 8 bytes inclusive.
 An SAI <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC connection identifiers as defined in <xref section="3.3.2" target="RFC9528"/>.
         </t>
         <sourcecode type="cddl">
-safe-sai = bstr / -24..23
+safe-sai = (bstr .size (0..8)) / (-24..23)
 </sourcecode>
       </section>
       <section anchor="sec-data-ake">
@@ -1681,7 +1758,7 @@ Note that when constrained, some activities can only begin with specific odd PDU
       </t>
       <figure anchor="fig-safe-pipeline-large-cas">
         <name>Pipelining with large CAS limit</name>
-        <artwork align="left" type="ascii-art">
+        <artwork align="left" type="ascii-art"><![CDATA[
 PDU #1    #2    #3    #4    #5
      |     |     |     |     |
  (IA 0 --- 1 --- 2 --- 3)    |
@@ -1690,19 +1767,19 @@ PDU #1    #2    #3    #4    #5
      |     | (SC 0 --- 1 --- 2)
      |     | (SC 0 --- 1 --- 2)
 
-          =----- time -----&gt;
-        </artwork>
+          =----- time ----->
+]]></artwork>
       </figure>
       <figure anchor="fig-safe-pipeline-small-cas">
         <name>Pipelining with small CAS limit</name>
-        <artwork align="left" type="ascii-art">
+        <artwork align="left" type="ascii-art"><![CDATA[
 PDU #1    #2    #3    #4    #5    #6    #7    #8    #9    #10   #11
      |     |     |     |     |     |     |     |     |     |     |
  (IA 0 --- 1 --- 2 --- 3)(SC 0 --- 1 --- 2)      (SC 0 --- 1 --- 2)
      | (CI 0 --- 1 --- 2)      (SC 0 --- 1 --- 2)
 
-          =----- time -----&gt;
-        </artwork>
+          =----- time ----->
+]]></artwork>
       </figure>
       <t>
 Regardless of how activities are aggregated into specific ADUs, the following requirements apply to ordering of activities related to a single primary SA.
@@ -1722,7 +1799,7 @@ The number of concurrent SC activities allowed to be started at each step is lim
       </t>
       <figure>
         <name>Notional States of a Primary SA</name>
-        <artwork align="center" type="ascii-art">
+        <artwork align="center" type="ascii-art"><![CDATA[
     +-----------+              
     |   Start   |              
     +-----+-----+              
@@ -1730,7 +1807,7 @@ IA step 0 |
           |                     
   +-------v--------+            
   |                |            
-  |  Initializing  &lt;---.         
+  |  Initializing  <---.         
   |                |   |         
   +-------+---+----+   | IA step 1-2
 IA step 3 |   |        |
@@ -1738,7 +1815,7 @@ IA step 3 |   |        |
           |                     
   +-------v--------+            
   |                |            
-  |   Established  &lt;---.       
+  |   Established  <---.       
   |                |   | SA Rekey
   +-------+------+-+   | (optional) 
 ST step 0 |      |     |       
@@ -1750,7 +1827,7 @@ ST step 1 |
     +-----v-----+              
     |  Removed  |              
     +-----------+              
-        </artwork>
+]]></artwork>
       </figure>
     </section>
     <section anchor="sec-sa-deriv">
@@ -2824,15 +2901,11 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
           </thead>
           <tbody>
             <tr>
-              <td>-32768 to -32641</td>
-              <td>Experimental use</td>
+              <td>-32768 to 0</td>
+              <td>Reserved</td>
             </tr>
             <tr>
-              <td>-32640 to -1</td>
-              <td>Private use</td>
-            </tr>
-            <tr>
-              <td>0 to 255</td>
+              <td>1 to 255</td>
               <td>RFC Required</td>
             </tr>
             <tr>
@@ -2863,7 +2936,7 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             </tr>
             <tr>
               <td>0</td>
-              <td><em>reserved</em></td>
+              <td>Reserved</td>
               <td>[This specification]</td>
             </tr>
             <tr>
@@ -2896,15 +2969,11 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
           </thead>
           <tbody>
             <tr>
-              <td>-32768 to -32641</td>
-              <td>Experimental use</td>
+              <td>-32768 to 0</td>
+              <td>Reserved</td>
             </tr>
             <tr>
-              <td>-32640 to -1</td>
-              <td>Private use</td>
-            </tr>
-            <tr>
-              <td>0 to 255</td>
+              <td>1 to 255</td>
               <td>RFC Required</td>
             </tr>
             <tr>
@@ -3253,15 +3322,15 @@ This example does not include any PDU losses so no retransmission is needed.
       </t>
       <figure anchor="fig-example-sequence">
         <name>Activities within PDUs in this example</name>
-        <artwork align="center" type="ascii-art">
+        <artwork align="center" type="ascii-art"><![CDATA[
 PDU #1    #2    #3    #4    #5
      |     |     |     |     |
  (IA 0 --- 1 --- 2 --- 3)    |
      | (CI 0 --- 1 --- 2)    |
      |     | (SC 0 --- 1 --- 2)
 
-      =----- time -----&gt;
-        </artwork>
+      =----- time ----->
+]]></artwork>
       </figure>
       <section>
         <name>SAFE PDU #1</name>

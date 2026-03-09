@@ -708,40 +708,41 @@ This applies to the <tt>SAFE_KDF</tt> function defined in <xref target="sec-deri
               </td>
             </tr>
             <tr>
-              <td>Local Private Prekeys</td>
+              <td>Primary pseudo-random key (PRK)</td>
               <td>
-A set of one-time-use private asymmetric key material used to process received SA Rekey activities.
-These private keys are generated locally and their associated public prekeys are communicated to the peer entity via SA Prekey activities.
+Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA1</tt> defined in <xref target="sec-deriv-psa-create"/>.
+This is used to derive further values for secondary SAs as defined in <xref target="sec-deriv-ssa-create"/> and content key material.
+              </td>
+            </tr>
+            <tr>
+              <td>TX Content Keys</td>
+              <td>
+The primary SA has one or more content keys for outgoing PDUs to the Peer EID, as a COSE key with contents as defined in <xref target="sec-deriv-psa-create"/>.
+<cref>TBD initialization vector (IV)</cref>
+The associated key material is derived from the shared secret created during <xref format="title" target="sec-act-ia"/> and <xref format="title" target="sec-act-cc"/> activities.
+              </td>
+            </tr>
+            <tr>
+              <td>RX Content Keys</td>
+              <td>
+The primary SA has one or more content keys for incoming PDUs from the Peer EID, as a COSE key with contents as defined in <xref target="sec-deriv-psa-create"/>.
+The associated key material is derived from the shared secret created during an <xref format="title" target="sec-act-ia"/> activity.
+              </td>
+            </tr>
+            <tr>
+              <td>RX Prekeys</td>
+              <td>
+A set of one-time-use private asymmetric key material used to process received CK Creation activities.
+These private keys are generated locally and their associated public prekeys are communicated to the peer entity via CK Prekey activities.
 Each private prekey has the information defined in <xref target="tab-info-sa-pri-localpre"/> and is scoped within a single primary SA.
               </td>
             </tr>
             <tr>
               <td>Peer Public Prekeys</td>
               <td>
-A set of one-time-use public key material used to process and initiate SA Rekey activities.
-These public keys are received from the peer entity through SA Prekey activities.
+A set of one-time-use public key material used to process and initiate CK Creation activities.
+These public keys are received from the peer entity through CK Prekey activities.
 Each public prekey has the information defined in <xref target="tab-info-sa-pri-peerpre"/> and is scoped within a single primary SA.
-              </td>
-            </tr>
-            <tr>
-              <td>TX Key Information</td>
-              <td>
-The primary SA has a single symmetric key for outgoing PDUs to the Peer EID, as a COSE key with contents as defined in <xref target="sec-deriv-psa-create"/>.
-The associated key material is derived from the shared secret created during an <xref format="title" target="sec-act-ia"/> activity.
-              </td>
-            </tr>
-            <tr>
-              <td>RX Key Information</td>
-              <td>
-The primary SA has a single symmetric key for incoming PDUs from the Peer EID, as a COSE key with contents as defined in <xref target="sec-deriv-psa-create"/>.
-The associated key material is derived from the shared secret created during an <xref format="title" target="sec-act-ia"/> activity.
-              </td>
-            </tr>
-            <tr>
-              <td>Primary pseudo-random key (PRK)</td>
-              <td>
-Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA1</tt> defined in <xref target="sec-deriv-psa-create"/>.
-This is used to derive further values for secondary SAs as defined in <xref target="sec-deriv-ssa-create"/> and context-specific key derivations.
               </td>
             </tr>
           </tbody>
@@ -1201,7 +1202,7 @@ The version specific header defined in this document <bcp14>SHALL</bcp14> be the
       </t>
       <dl>
         <dt>Partial IV:</dt>
-        <dd>A PIV byte string or <tt>null</tt> value</dd>
+        <dd>A partial IV byte string or <tt>null</tt> value</dd>
         <dt>Receiver SAI:</dt>
         <dd>A receiver SAI byte string or integer (based on EDHOC compressed byte string encoding) or <tt>true</tt> value</dd>
       </dl>
@@ -1492,8 +1493,8 @@ $$sc-data //= (4: safe-kus)
 Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-ssa-create"/>.
         </t>
       </section>
-      <section anchor="sec-act-sr">
-        <name>SA Rekey (SR)</name>
+      <section anchor="sec-act-cc">
+        <name>CK Creation (CC)</name>
         <t>
 This activity is used to establish a new set of derived key (and possibly other) material within an existing SA without changing the other parameters of the SA (<em>e.g.</em>, algorithm choice or endpoint selectors).
 The SA Rekey (SR) activity <bcp14>SHALL</bcp14> be identified by activity type 4.
@@ -1700,7 +1701,7 @@ safe-ake = bstr
       <section anchor="sec-data-arn">
         <name>Additional Random Nonce (ARN)</name>
         <t>
-This data item provides a random nonce value from the sender to add entropy into the PRF used during <xref target="sec-act-sc">SA Creation</xref> and <xref target="sec-act-sr">SA Rekey</xref> to generate SA data.
+This data item provides a random nonce value from the sender to add entropy into the PRF used during <xref target="sec-act-sc">SA Creation</xref> and <xref target="sec-act-cc">CK Creation</xref> to generate content key data.
 The data value <bcp14>SHALL</bcp14> be a byte string with a size in the inclusive range 1 to 256 bytes.
         </t>
         <sourcecode type="cddl">
@@ -3102,15 +3103,15 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             </tr>
             <tr>
               <td>2</td>
-              <td>SA Creation</td>
-              <td>SC</td>
-              <td><xref target="sec-act-sc"/> of [This specification]</td>
+              <td>Event Notification</td>
+              <td>EN</td>
+              <td><xref target="sec-act-en"/> of [This specification]</td>
             </tr>
             <tr>
               <td>3</td>
-              <td>SA Rekey</td>
-              <td>SR</td>
-              <td><xref target="sec-act-sr"/> of [This specification]</td>
+              <td>SA Creation</td>
+              <td>SC</td>
+              <td><xref target="sec-act-sc"/> of [This specification]</td>
             </tr>
             <tr>
               <td>4</td>
@@ -3120,12 +3121,18 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             </tr>
             <tr>
               <td>5</td>
-              <td>Event Notification</td>
-              <td>EN</td>
-              <td><xref target="sec-act-en"/> of [This specification]</td>
+              <td>CK Creation</td>
+              <td>SR</td>
+              <td><xref target="sec-act-cc"/> of [This specification]</td>
             </tr>
             <tr>
-              <td>6 to 32767</td>
+              <td>6</td>
+              <td>CK Discard</td>
+              <td>SR</td>
+              <td><xref target="sec-act-cc"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>7 to 32767</td>
               <td><em>Unassigned</em></td>
               <td/>
               <td/>

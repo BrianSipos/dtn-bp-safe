@@ -369,32 +369,52 @@ The optional CK Prekey activity and its public key data is used to ensure forwar
 The CK Discard activity is used to inform the RX end when the CK will no longer be used for security operations and it is safe to be discarded.
         </t>
         <figure anchor="fig-ck-lifecycle">
-          <name>Lifecycle of SA content keys</name>
+          <name>Activity sequence for one SA content key</name>
           <artwork align="center" type="ascii-art"><![CDATA[
-+--------+               +--------+      
-|Entity A|               |Entity B|      
++--------+               +--------+
+|Entity A|               |Entity B|
 |(TX end)|               |(RX end)|
-+--------+               +--------+      
-    |                        |           
-    |<===== SA Creation ====>|           
-    |                        |           
-    |        optional        |           
-    |        CK Prekey       |           
-    |<-----------------------+           
-    |- - - - - - - - - - - ->|           
-    |                        |           
-    |        CK Create       |           
-    +----------------------->|           
-    |<- - - - - - - - - - - -|           
-    |                        |           
-    |        Use CK in       |           
-    |        data plane      |           
-    +----------------------->|           
-    +----------------------->|           
-    |                        |           
-    |        CK Discard      |           
-    +----------------------->|           
-    |<- - - - - - - - - - - -|           
++--------+               +--------+
+    |<===== SA Creation ====>|     
+    |          ...           |     
+    |                        |     
+    |        optional        |     
+    |        CK Prekey       |     
+    |<-----------------------+     
+    |- - - - - - - - - - - ->|     
+    |                        |     
+    |        CK Create       |     
+    +----------------------->|     
+    |<- - - - - - - - - - - -|     
+    |                        |     
+    |        Use CK in       |     
+    |        data plane      |     
+    +----------------------->|     
+    +----------------------->|     
+    |                        |     
+    |        CK Discard      |     
+    +----------------------->|     
+    |<- - - - - - - - - - - -|     
+]]></artwork>
+        </figure>
+        <figure anchor="fig-ck-timeline">
+          <name>Timeline of SA content keys</name>
+          <artwork align="center" type="ascii-art"><![CDATA[
++--------------------------------------+
+|         Security Association         |
++--------------------------------------+
+
++----------+
+|   CK 1   |
++----------+
+         +----------------+
+         |      CK 2      |
+         +----------------+
+                      +--------------+
+                      |     CK 3     |
+                      +--------------+
+
+          =----- time ----->
 ]]></artwork>
         </figure>
       </section>

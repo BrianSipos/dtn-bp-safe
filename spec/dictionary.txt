@@ -97,6 +97,7 @@ hdr
 HMAC
 IANA
 ident
+IDentifier
 Idx
 IESG
 IETF
@@ -222,6 +223,7 @@ untagged
 Untrusted
 URI
 UTF
+UUID
 verifier
 wireshark
 Wireshark

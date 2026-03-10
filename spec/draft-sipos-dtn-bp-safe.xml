@@ -1806,11 +1806,12 @@ This means that a single SA has two SAIs used to identify it, one from each enti
         </t>
         <t>
 An SAI <bcp14>SHALL</bcp14> be treated as an opaque byte string as its internal representation and comparison logic.
-An SAI <bcp14>SHALL</bcp14> be limited to a length between 0 and 8 bytes inclusive.
+An SAI <bcp14>SHALL</bcp14> be limited to a length between 0 and 16 bytes inclusive.
+This length allows a Universally Unique IDentifier (UUID) <xref target="RFC9562"/> to be used as an SAI.
 An SAI <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC connection identifiers as defined in <xref section="3.3.2" target="RFC9528"/>.
         </t>
         <sourcecode type="cddl">
-safe-sai = (bstr .size (0..8)) / (-24..23)
+safe-sai = (bstr .size (0..16)) / (-24..23)
 </sourcecode>
       </section>
       <section anchor="sec-data-kid">
@@ -1821,12 +1822,13 @@ All KIDs are guaranteed unique within the parent primary SA context, but each en
 Each content key has a single KID defined by the entity which initiated the creation of the symmetric key, and each content prekey has a single KID defined by the entity which holds the associated private key.
         </t>
         <t>
-An SAI <bcp14>SHALL</bcp14> be treated as an opaque byte string as its internal representation and comparison logic.
-An SAI <bcp14>SHALL</bcp14> be limited to a length between 0 and 8 bytes inclusive.
-An SAI <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC connection identifiers as defined in <xref section="3.3.2" target="RFC9528"/>.
+A KID <bcp14>SHALL</bcp14> be treated as an opaque byte string as its internal representation and comparison logic.
+A KID <bcp14>SHALL</bcp14> be limited to a length between 0 and 16 bytes inclusive.
+This length allows a UUID <xref target="RFC9562"/> to be used as an KID.
+A KID <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC connection identifiers as defined in <xref section="3.3.2" target="RFC9528"/>.
         </t>
         <sourcecode type="cddl">
-safe-kid = (bstr .size (0..8)) / (-24..23)
+safe-kid = (bstr .size (0..16)) / (-24..23)
 </sourcecode>
       </section>
       <section anchor="sec-data-ake">
@@ -3623,6 +3625,7 @@ These entries are distinct and separate from the "EDHOC Error Codes" registry of
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9147.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9173.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9529.xml"/>
+        <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9562.xml"/>
         <reference anchor="github-dtn-bp-safe" target="https://github.com/BrianSipos/dtn-bp-safe/">
           <front>
             <title>Bundle Protocol (BP) Security Associations with Few Exchanges (SAFE)</title>

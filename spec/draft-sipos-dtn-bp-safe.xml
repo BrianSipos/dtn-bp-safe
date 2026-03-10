@@ -430,8 +430,9 @@ After the IA has finished and a primary SA is established, confidentiality is pr
       <section anchor="sec-protocol-bpsec">
         <name>Relationship to BPSec</name>
         <t>
-The reason for establishing secondary SAs in the first place is to be able to provide symmetric session keys to be used by BPSec for data plane security operations on individual target blocks within specific bundles as described in <xref target="sec-intro-usecases"/>.
-Part of the scoping of each SA includes a BPSec security context identifier and its options for which each derived symmetric key is authorized to be used.
+This SAFE protocol functions as a control plane for establishing secondary SAs, which are then used to provide symmetric content keys to be used by BPSec for data plane security operations on individual target blocks within specific bundles as described in <xref target="sec-intro-usecases"/>.
+The scoping of each secondary SA includes a BPSec security context identifier and its options for which each derived content key is authorized to be used.
+It is up to BPSec policy on each of the SAFE peer nodes to enforce those authorized uses as the mandatory security source and mandatory security acceptor for matching flows in each direction.
         </t>
         <t>
 A secondary SA is scoped by the following aspects which inform BPSec policy on each peer node.

@@ -257,10 +257,15 @@ Terminology used within the SAFE protocol includes the following:
           <dt>SAFE Bundle:</dt>
           <dd>
 A bundle with a source or destination EID having a well-known service identifier allocated for SAFE (see <xref target="sec-iana"/>).
+These bundles are communicated between SAFE entities on participating nodes.
           </dd>
           <dt>Participating node:</dt>
           <dd>
-A BP node which sources and/or delivers SAFE Bundles via a BP Agent.
+A BP node which sources and/or delivers SAFE Bundles via a BP Agent to an associated SAFE entity.
+          </dd>
+          <dt>SAFE entity:</dt>
+          <dd>
+An implementation artifact which manages the SAFE states defined in this specification within each participating node.
           </dd>
           <dt>Interaction point (of a BP Agent):</dt>
           <dd>
@@ -268,17 +273,31 @@ One of the four locations on the data plane by which a BP Agent interacts with o
           </dd>
           <dt>Security Association (SA):</dt>
           <dd>
-An agreed state between two participating nodes which contains the result of an authenticated key exchange and some number of derived symmetric session keys.
+An agreed state between two participating nodes which contains the result of an authenticated key exchange and some number of derived symmetric content keys.
+          </dd>
+          <dt>Content Key (CK):</dt>
+          <dd>
+An individual symmetric key material along with metadata controlling and authorizing its use within a specific context.
+One context for CK use is for confidentiality of SAFE messages between SAFE entities.
+Another context for CK use is within the data plane of participating nodes outside of the SAFE entities.
           </dd>
           <dt>Activity:</dt>
           <dd>
-Each SAFE activity consists of a sequence of data being exchanged, via protocol messaging, between two nodes to achieve a specific narrow goal.
+Each SAFE activity consists of a sequence of messages being exchanged, via protocol messaging, between two participating entities to achieve a specific narrow goal.
+Each activity instance a specific type and one SAFE entity as its initiator.
+Each type of activity consists of a well-defined number of steps of messaging between its entities.
           </dd>
           <dt>Message:</dt>
           <dd>
-Each step of an activity is a message containing a specific set of data items.
+Each step of an activity is realized by a message identifying its activity index and step number.
+Each data-bearing message also identifies its activity type and contains a set of type-specific data items.
 Each message has a deterministic binary encoding using CBOR.
 Some messages are constructed as responses to earlier messages in an activity and need to be interpreted in the context of the whole activity.
+          </dd>
+          <dt>Unilateral activity:</dt>
+          <dd>
+An activity type which consists of a single data-bearing message from the initiator followed by a single acknowledgement message from the responder.
+There is no negotiated state for these activity types, and the acknowledgement is purely for retransmission sub-layer needs.
           </dd>
           <dt>Protocol Data Unit (PDU):</dt>
           <dd>
@@ -520,7 +539,7 @@ Well-known contexts will be registered with IANA under <xref target="IANA-BUNDLE
     <section anchor="sec-info">
       <name>Information Bases</name>
       <t>
-BP SAFE operates by using an activity sequence of messages (see <xref target="sec-act"/>) to establish and maintain security associations between pairs of participating nodes.
+BP SAFE operates by using an activity sequence of messages (see <xref target="sec-act"/>) to establish and maintain security associations between pairs of participating entities.
       </t>
       <t>
 There are two logical tiers of SA, primary and secondary, which are treated here as two separate information tables.
@@ -1023,7 +1042,7 @@ One of the metadata items is a partial IV (PIV) value used for SAFE ciphertext; 
  \__           ____________________________/
     \         /
 +-------------------------------------+
-| Msg. 1 bstr |...| Msg. N bstr | pad |      <- Message Aggregation
+| Msg. 1 bstr |...| Msg. N bstr | pad |       <- Message Aggregation
 +-------------------------------------+
 |                 Plaintext           |
 + ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ +
@@ -1399,7 +1418,7 @@ SAFE entities <bcp14>SHALL</bcp14> use EDHOC errors in accordance with <xref sec
         <t>
 During transport, PI PDUs <bcp14>SHALL NOT</bcp14> be the target of a BPSec confidentiality operation between the participating (source and destination) nodes.
 The use of application-level confidentiality ensures the security of information exchanged via this PDU.
-There is no restriction on any intermediate security handling of SAFE PDUs between the participating nodes.
+There is no restriction on any intermediate security handling of SAFE PDUs between the participating entities.
         </t>
         <t>
 The CDDL corresponding to this activity type are the first two variations of <tt>safe-pdu-data</tt> from <xref target="sec-layers-agg"/>.

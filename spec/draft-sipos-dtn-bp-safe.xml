@@ -1282,38 +1282,71 @@ When an error is indicated on an activity it <bcp14>SHALL</bcp14> be considered 
         </t>
       </section>
       <section anchor="sec-layers-agg">
-        <name>Message Aggregation and Security</name>
+        <name>Message Aggregation</name>
+        <t>
+The message aggregation sub-layer allows one or more encoded SAFE messages (as opaque byte strings) to be concatenated together, along with optional padding, into a single plaintext as defined in <xref target="fig-safe-plaintext"/>.
+The entire SAFE plaintext <bcp14>SHALL</bcp14> be a CBOR sequence.
+Each SAFE message <bcp14>SHALL</bcp14> be represented as a CBOR byte string item containing a single encoded SAFE message as defined in <xref target="sec-layers-msg"/>.
+        </t>
+        <t>
+If present, the padding <bcp14>SHALL</bcp14> be the last item in the plaintext sequence.
+The padding <bcp14>SHALL</bcp14> be identified by CBOR tag 55799, indicating "Self-described CBOR" as defined in <xref section="3.4.6" target="RFC8949"/>.
+This tag is arbitrary and provides no additional semantics, it is solely used to distinguish between SAFE message byte strings in the plaintext.
+It is an implementation matter to determine when and how much padding is added to any SAFE plaintext.
+A receiver of SAFE plaintext <bcp14>SHALL</bcp14> ignore any padding.
+        </t>
+        <figure anchor="fig-safe-plaintext">
+          <name>SAFE plaintext structure CDDL</name>
+          <sourcecode type="cddl">
+; A sequence of encoded-message bstr with optional tagged padding
+safe-pdu-plaintext = (+ safe-msg-bstr, ? safe-padding)
+safe-padding = #6.55799(bstr)
+
+; TODO this needs to be redefined and used as part of SAFE confidentiality
+safe-pdu-aad = (
+  rx-sai: safe-sai
+)
+          </sourcecode>
+        </figure>
+      </section>
+      <section anchor="sec-layers-pdu">
+        <name>Packetization</name>
         <t>
 Because SAFE is used to provide BPSec key material, the security properties of a SAFE bundle are more complex than other BP flows might be.
 For example, the bundles carrying Initialization messages need to be transported as plaintext payload (with intrinsic EDHOC protections) while other SAFE bundles need to be protected by the keys from a primary SA (negotiated as part of the EDHOC sequence).
-      </t>
-      <t keepWithNext="true">
+        </t>
+        <t keepWithNext="true">
 The structure of a SAFE PDU is a CBOR sequence of the SAFE version number followed by header items and then payload items.
 The protocol in this document <bcp14>SHALL</bcp14> be identified by version number 1.
 The version specific header defined in this document <bcp14>SHALL</bcp14> be the following:
-      </t>
-      <dl>
-        <dt>Partial IV:</dt>
-        <dd>A partial IV byte string or <tt>null</tt> value</dd>
-        <dt>Receiver SAI:</dt>
-        <dd>A receiver SAI byte string or integer (based on EDHOC compressed byte string encoding) or <tt>true</tt> value</dd>
-      </dl>
-      <t>
-When the Partial IV is <tt>null</tt>, the payload <bcp14>SHALL</bcp14> be one of the EDHOC messages defined in <xref target="RFC9528"/> and handled in accordance with <xref target="sec-act-ia"/>.
+        </t>
+        <dl>
+          <dt>Partial IV:</dt>
+          <dd>A partial IV byte string or the <tt>null</tt> value to indicate EDHOC security.</dd>
+          <dt>Key Identifier:</dt>
+          <dd>A key identifier within the primary SA or the <tt>null</tt> value to indicate EDHOC security.</dd>
+          <dt>Receiver SAI:</dt>
+          <dd>A receiver SAI byte string or integer (based on EDHOC compressed byte string encoding) or the <tt>true</tt> value.</dd>
+        </dl>
+        <t>
+When the Partial IV and Key Identifier are both <tt>null</tt>, the payload <bcp14>SHALL</bcp14> be one of the EDHOC messages defined in <xref target="RFC9528"/> and handled in accordance with <xref target="sec-act-ia"/> and <xref target="sec-sa-use-safe-nopsa"/>.
 When the Receiver SAI is <tt>true</tt>, the payload <bcp14>SHALL</bcp14> be a Message 1 as defined in <xref section="5.2" target="RFC9528"/>.
 All other Receiver SAI values <bcp14>SHALL</bcp14> be treated as a connection identifier, encoded in accordance with <xref section="3.3.2" target="RFC9528"/>, used to correlate with an existing EDHOC session.
-      </t>
-      <t>
-When the Partial IV is a byte string, the payload <bcp14>SHALL</bcp14> be a SAFE ciphertext and handled in accordance with <xref target="sec-sa-use-safe-withpsa"/>.
+        </t>
+        <t>
+When the Partial IV and the Key Identifier are not <tt>null</tt>, the payload <bcp14>SHALL</bcp14> be a SAFE ciphertext and handled in accordance with <xref target="sec-sa-use-safe-withpsa"/>.
 In this case, Receiver SAI values <bcp14>SHALL</bcp14> be decoded as and treated as a <xref format="title" target="sec-data-sai"/> used to correlate with the Local SAI of a Primary SA (see <xref target="tab-info-sa-pri"/>) on the receiving entity.
-      </t>
-      <t keepWithNext="true">
-This is indicated by the following CDDL for the SAFE bundle PDU sequence.
-      </t>
-      <figure anchor="fig-safe-pdu">
-        <name>SAFE PDU structure CDDL</name>
-        <sourcecode type="cddl">
-; Encoded to PDU as CBOR sequence
+        </t>
+        <t>
+Any other combinations of header values <bcp14>SHALL</bcp14> be treated as invalid and discarded by a receiver.
+        </t>
+        <t keepWithNext="true">
+These cases are indicated by the following CDDL for the SAFE bundle PDU sequence.
+        </t>
+        <figure anchor="fig-safe-pdu">
+          <name>SAFE PDU structure CDDL</name>
+          <sourcecode type="cddl">
+; Encoded to PDU as CBOR sequence without array head
 safe-pdu-seq = [
     version: 1,
     ; PDU variants follow the same structure with unique prefix items
@@ -1322,12 +1355,14 @@ safe-pdu-seq = [
 
 safe-pdu-edhoc //= (
     partial-iv: null,
+    psa-kid: null,
     rx-sai: true,
     ; Group message_1 from RFC 9528
     message_1
 )
 safe-pdu-edhoc //= (
     partial-iv: null,
+    psa-kid: null,
     rx-sai: safe-sai,
     edhoc_234 // error
 )
@@ -1337,24 +1372,17 @@ edhoc_234 = bstr
 
 safe-pdu-confidential //= (
     partial-iv: bstr,
+    psa-kid: safe-kid,
     rx-sai: safe-sai,
-    ; Ciphertext data corresponding to safe-pdu-plaintext below
+    ; Ciphertext data corresponding to `safe-pdu-plaintext` rule
     ciphertext: bstr
 )
-
-; A sequence of encoded-message bstr with optional tagged padding
-safe-pdu-plaintext = (+ safe-msg-bstr, ? safe-padding)
-safe-padding = #6.55799(bstr)
-
-safe-pdu-aad = (
-  rx-sai: safe-sai
-)
-        </sourcecode>
-      </figure>
-      <t>
-Within restrictions defined for each message type, multiple messages <bcp14>MAY</bcp14> be combined into a single PDU (as either EDHOC EAD or SAFE plaintext).
-Due to the logic of the <xref format="title" target="sec-act-ia"/> sequencing, only one EDHOC session can make progress between two endpoints at any time so there is no concept of a full EDHOC PDU embedded within an EAD item, only individual messages.
-      </t>
+          </sourcecode>
+        </figure>
+        <t>
+Within restrictions defined for each message type, multiple messages <bcp14>MAY</bcp14> be combined into a single PDU, as either <xref target="sec-act-ia">EDHOC EAD</xref> or <xref target="sec-layers-agg">SAFE plaintext</xref>.
+Due to the logic of the IA activity sequencing, only one EDHOC session can make progress between two endpoints at any time so there is no concept of a full EDHOC PDU embedded within an EAD item, only individual messages.
+        </t>
       </section>
       <section anchor="sec-layers-transport">
         <name>PDU Transport</name>
@@ -1421,7 +1449,7 @@ The use of application-level confidentiality ensures the security of information
 There is no restriction on any intermediate security handling of SAFE PDUs between the participating entities.
         </t>
         <t>
-The CDDL corresponding to this activity type are the first two variations of <tt>safe-pdu-data</tt> from <xref target="sec-layers-agg"/>.
+The CDDL corresponding to this activity type are the first two variations of <tt>safe-pdu-seq</tt> from <xref target="sec-layers-pdu"/>.
 Additionally, the <em>EAD</em> payload of the EDHOC messages are extended to be able to confidentially carry encoded SAFE messages during the IA activity.
 Any number of EAD items of label <cref>TBA5</cref> and value matching the <tt>safe-msg-bstr</tt> rule (defined in <xref target="sec-layers-msg"/>) <bcp14>MAY</bcp14> be present in EDHOC lists <tt>EAD_2</tt>, <tt>EAD_3</tt>, and <tt>EAD_4</tt>.
 EAD items of label <cref>TBA5</cref> <bcp14>SHALL NOT</bcp14> be present in <tt>EAD_1</tt>, which is transported as plaintext.
@@ -2371,7 +2399,7 @@ Encode the Partial IV as a minimum-length byte string in network byte order.
             </li>
             <li>
               <t>
-Use the result to construct the following PDU fields, named as in <xref target="sec-layers-agg"/>:
+Use the result to construct the following PDU fields, named as in <xref target="sec-layers-pdu"/>:
               </t>
               <dl>
                 <dt><tt>partial-iv</tt>:</dt>
@@ -3096,7 +3124,7 @@ This section separates security considerations into threat categories based on g
       <section anchor="sec-security-passive-leak">
         <name>Threat: Passive Leak of Data</name>
         <t>
-Because the SAFE protocol uses EDHOC for its initial authentication activity and messaging and uses primary SA data for confidentiality afterward, the only information which is exposed in plaintext are the <xref format="title" target="sec-data-sai"/> values (which are also EDHOC connection identifiers) and SAFE confidentiality <xref target="sec-layers-agg">partial IV</xref> values.
+Because the SAFE protocol uses EDHOC for its initial authentication activity and messaging and uses primary SA data for confidentiality afterward, the only information which is exposed in plaintext are the <xref format="title" target="sec-data-sai"/> values (which are also EDHOC connection identifiers) and SAFE security <xref target="sec-layers-pdu">partial IV</xref> values.
         </t>
         <t>
 Both of these values are used strictly for uniqueness and can either be generated by a SAFE entity deterministically or randomly.

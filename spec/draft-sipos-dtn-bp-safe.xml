@@ -402,7 +402,7 @@ The CK Discard activity is used to inform the RX end when the CK will no longer 
     |<-----------------------+     
     |- - - - - - - - - - - ->|     
     |                        |     
-    |        CK Create       |     
+    |       CK Creation      |     
     +----------------------->|     
     |<- - - - - - - - - - - -|     
     |                        |     
@@ -411,29 +411,38 @@ The CK Discard activity is used to inform the RX end when the CK will no longer 
     +----------------------->|     
     +----------------------->|     
     |                        |     
+    |        optional        |     
     |        CK Discard      |     
     +----------------------->|     
     |<- - - - - - - - - - - -|     
 ]]></artwork>
         </figure>
+        <t>
+An important aspect that distinguishes security associations from their constituent content keys is that the SA is parameterized to determine which traffic (either SAFE PDUs or data plane traffic) is covered by security and how that security is applied but does not contain any intrinsic time-variance, while each CK is parameterized to have a single validity time interval bounding its use over wall-clock time.
+This means that the SA lifecycle is managed in wall-clock time by activities between SAFE entities, specifically <xref format="title" target="sec-act-sc"/> and <xref format="title" target="sec-act-st"/>.
+Within each SA, the CKs intrinsic time-variance allows pre-planning a sequence of keys with future validity to enable continuous operation by rolling-over content keys as they expire in wall-clock time as illustrated in <xref target="fig-ck-timeline"/> for a single data direction.
+All of those CKs can be created immediately after SC creation with future validity times.
+        </t>
         <figure anchor="fig-ck-timeline">
           <name>Timeline of SA content keys</name>
           <artwork align="center" type="ascii-art"><![CDATA[
-+--------------------------------------+
-|         Security Association         |
-+--------------------------------------+
+ (SC) (CC)                             (ST)
+  |    |                                 |
+  +--------------------------------------+
+  |         Security Association         |
+  +--------------------------------------+
+       |
+  +----------+
+  |   CK #1  |
+  +----------+
+       |   +----------------+
+       +-->|      CK #2     |
+       |   +----------------+
+       |                +--------------+
+       +--------------->|     CK #3    |
+                        +--------------+
 
-+----------+
-|   CK 1   |
-+----------+
-         +----------------+
-         |      CK 2      |
-         +----------------+
-                      +--------------+
-                      |     CK 3     |
-                      +--------------+
-
-          =----- time ----->
+          =----- timeline ----->
 ]]></artwork>
         </figure>
       </section>
@@ -1444,7 +1453,7 @@ Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC mess
         <name>Capability Indication (CI)</name>
         <t>
 This activity allows each entity to indicate its SAFE-related capabilities to its peer.
-The Capability Indication (CI) activity <bcp14>SHALL</bcp14> be identified by activity type 2.
+The Capability Indication (CI) activity <bcp14>SHALL</bcp14> be identified by activity type 1.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1483,6 +1492,45 @@ ci-data = { * $$ci-data } .within data-map
 $$ci-data //= (1: concur-act-limit)
 $$ci-data //= (2: eid-scheme-list)
 $$ci-data //= (3: bpsec-ctxid-list)
+        </sourcecode>
+      </section>
+      <section anchor="sec-act-en">
+        <name>Event Notification (EN)</name>
+        <t>
+This activity is used by the initiator to inform the peer entity of an event which affects the entire primary SA.
+The Event Notification (EN) activity <bcp14>SHALL</bcp14> be identified by activity type 2.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 1: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>Event Notification Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The event reason code, as an integer interpreted according to the IANA table <cref>TBD</cref>.</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Event cause message, as an array containing the two-item identity of that message.</td>
+            </tr>
+          </tbody>
+        </table>
+        <sourcecode type="cddl">
+en-data = {* $$en-data } .within data-map
+
+$$en-data //= (1: en-cause)
+en-cause = [msg-ident]
         </sourcecode>
       </section>
       <section anchor="sec-act-sc">
@@ -1638,7 +1686,7 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 2: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
-          <name>SA Rekey Data Items</name>
+          <name>SA Prekey Data Items</name>
           <thead>
             <tr>
               <th>Label</th>
@@ -1652,14 +1700,14 @@ The sequence of steps and their data for this activity are the following:
             </tr>
             <tr>
               <td>2</td>
-              <td>The KID for the prekey created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>.</td>
+              <td>The KID for the prekey created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is an RX prekey, from the responder side this is a TX prekey.</td>
             </tr>
             <tr>
-              <td>3</td>
+              <td>10</td>
               <td>A <xref format="title" target="sec-data-nti"/> used as the prekey validity time interval.</td>
             </tr>
             <tr>
-              <td>4</td>
+              <td>11</td>
               <td>The sender's one-time-use public key, as defined in <xref target="sec-data-ake"/>.</td>
             </tr>
           </tbody>
@@ -1667,12 +1715,12 @@ The sequence of steps and their data for this activity are the following:
         <sourcecode type="cddl">
 cp-data = {* $$cp-data } .within data-map
 
-; SAI for the responder
-$$sr-data //= (1: safe-sai)
-; KID for the prekey being shared by the initiator
+; Identifiers for the responder
+$$cp-data //= (1: safe-sai)
 $$cp-data //= (2: safe-kid)
-$$cp-data //= (3: safe-nti)
-$$cp-data //= (4: safe-ake)
+
+$$cp-data //= (10: safe-nti)
+$$cp-data //= (11: safe-ake)
         </sourcecode>
         <t>
 Upon the first reception of CP step 0, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and store the prekey information within the SA.
@@ -1682,7 +1730,7 @@ Upon the first reception of CP step 0, the entity <bcp14>SHALL</bcp14> correlate
         <name>CK Creation (CC)</name>
         <t>
 This activity is used to establish a new set of derived key (and possibly other) material within an existing SA without changing the other parameters of the SA (<em>e.g.</em>, algorithm choice or endpoint selectors).
-The SA Rekey (SR) activity <bcp14>SHALL</bcp14> be identified by activity type 6.
+The CK Creation (CC) activity <bcp14>SHALL</bcp14> be identified by activity type 6.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1692,7 +1740,7 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 2: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
-          <name>SA Rekey Data Items</name>
+          <name>CK Creation Data Items</name>
           <thead>
             <tr>
               <th>Label</th>
@@ -1706,43 +1754,126 @@ The sequence of steps and their data for this activity are the following:
             </tr>
             <tr>
               <td>2</td>
-              <td>An optional identifier for a prekey, shared by the responder in an earlier <xref format="title" target="sec-act-cp"/> activity, as defined in <xref target="sec-data-kid"/></td>
+              <td>The KID for the content key created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is a TX content key, from the responder side this is an RX content key.</td>
             </tr>
             <tr>
-              <td>3</td>
+              <td>10</td>
+              <td>An optional identifier for a prekey, shared by the responder in an earlier <xref format="title" target="sec-act-cp"/> activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is a TX prekey, from the responder side this is an RX prekey.</td>
+            </tr>
+            <tr>
+              <td>11</td>
               <td>An optional random nonce per <xref target="sec-data-arn"/></td>
             </tr>
           </tbody>
         </table>
         <sourcecode type="cddl">
-sr-data = {* $$sr-data } .within data-map
+cc-data = {* $$cc-data } .within data-map
 
-; Error codes from the responder
-$$sr-data //= (0: safe-ete)
-; SAI for the responder
-$$sr-data //= (1: safe-sai)
+; Identity of the new CK from the initiator
+$$cc-data //= (1: safe-sai)
+$$cc-data //= (2: safe-kid)
 
 ; Optional PRF parameters
-$$sr-data //= (2: safe-kid)
-$$sr-data //= (3: safe-arn)
+$$cc-data //= (10: safe-kid)
+$$cc-data //= (11: safe-arn)
         </sourcecode>
         <t>
 Upon the first reception or transmission of SR step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
         </t>
       </section>
-      <section anchor="sec-act-en">
-        <name>Event Notification (EN)</name>
+      <section anchor="sec-act-cd">
+        <name>CK Discard (CD)</name>
         <t>
-        <cref>TBD</cref>
-This activity is used by the initiator to inform the peer entity of an event.
-The Event Notification (EN) activity <bcp14>SHALL</bcp14> be identified by activity type 7.
+This activity is used to indicate that an earlier content key has been discarded from its TX side owner and will no longer be used for any data plane security.
+The CK Discard (CD) activity <bcp14>SHALL</bcp14> be identified by activity type 7.
         </t>
+        <t>
+It is an implementation matter to determine when to initiate a CK Discard activity.
+The CK Discard <bcp14>SHALL NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 2: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>CK Discard Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>The KID for the content key created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is a TX content key, from the responder side this is an RX content key.</td>
+            </tr>
+          </tbody>
+        </table>
         <sourcecode type="cddl">
-en-data = {* $$en-data } .within data-map
+cd-data = {* $$cd-data } .within data-map
 
-$$en-data //= (1: en-cause)
-en-cause = [msg-ident]
+; Identity of the CK from the initiator
+$$cd-data //= (1: safe-sai)
+$$cd-data //= (2: safe-kid)
         </sourcecode>
+        <t>
+Upon the first reception or transmission of SR step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+        </t>
+      </section>
+      <section anchor="sec-act-cr">
+        <name>CK Reject (CR)</name>
+        <t>
+This activity is used to indicate that an earlier content key has been rejected from its RX side and will no longer be used for any data plane security.
+The CK Reject (CR) activity <bcp14>SHALL</bcp14> be identified by activity type 8.
+        </t>
+        <t>
+It is an implementation matter to determine when to initiate a CK Reject activity.
+The CK Reject <bcp14>SHALL NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 2: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>CK Discard Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>The KID for the content key created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is an RX content key, from the responder side this is a TX content key.</td>
+            </tr>
+          </tbody>
+        </table>
+        <sourcecode type="cddl">
+cr-data = {* $$cr-data } .within data-map
+
+; Identity of the CK from the initiator
+$$cr-data //= (1: safe-sai)
+$$cr-data //= (2: safe-kid)
+        </sourcecode>
+        <t>
+Upon the first reception or transmission of SR step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+        </t>
       </section>
     </section>
     <section anchor="sec-data">
@@ -2092,7 +2223,7 @@ One of the final PRKs, the <tt>PRK_exporter</tt>, is used for "EDHOC application
         |                        
 +-------|-----------------------+
 | exp.  v         Primary SA    |
-|label->O                       |
+|label->Exp.                    |
 |       |                       |
 |       v                       |
 |    PRK_SA1                    |
@@ -3359,23 +3490,29 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             <tr>
               <td>5</td>
               <td>CK Prekey</td>
-              <td>SP</td>
+              <td>CP</td>
               <td><xref target="sec-act-cp"/> of [This specification]</td>
             </tr>
             <tr>
               <td>6</td>
               <td>CK Creation</td>
-              <td>SR</td>
+              <td>SC</td>
               <td><xref target="sec-act-cc"/> of [This specification]</td>
             </tr>
             <tr>
               <td>7</td>
               <td>CK Discard</td>
-              <td>SR</td>
-              <td><xref target="sec-act-cc"/> of [This specification]</td>
+              <td>CD</td>
+              <td><xref target="sec-act-cd"/> of [This specification]</td>
             </tr>
             <tr>
-              <td>8 to 32767</td>
+              <td>8</td>
+              <td>CK Reject</td>
+              <td>CR</td>
+              <td><xref target="sec-act-cr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>9 to 32767</td>
               <td><em>Unassigned</em></td>
               <td/>
               <td/>

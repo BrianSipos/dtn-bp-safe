@@ -138,17 +138,17 @@ This logic is indicated in later diagrams by the "(Decide)" label inside a BPA b
       |   Registered  |                  |   Registered  |
       | Application(s)|                  | Application(s)|
       +---------------+                  +---------------+
-        |           ^                      |           ^       
+        |           ^                      |           ^
 Transmit|           |Deliver       Transmit|           |Deliver
-        v           |                      v           |       
-   +----------------+----+            +----------------+----+  
-   |                     |            |                     |  
-   |      BP Agent       |            |      BP Agent       |  
-   |                     |            |                     |  
-   +----------------+----+            +----------------+----+  
-        ^           |                      ^           |       
+        v           |                      v           |
+   +----------------+----+            +----------------+----+
+   |                     |            |                     |
+   |      BP Agent       |            |      BP Agent       |
+   |                     |            |                     |
+   +----------------+----+            +----------------+----+
+        ^           |                      ^           |
  Receive|           |Forward        Receive|           |Forward
-        |           v                      |           v       
+        |           v                      |           v
 ~---------+       +-----------~  ~---------+-+       +--------~
           |       |     Forwarding Hop(s)    |       |         
 ~---------+       +-----------~  ~-----------+       +--------~
@@ -173,20 +173,20 @@ The negotiated security service is sourced immediately upon bundle creation (aft
             <artwork align="center" type="ascii-art"><![CDATA[
         |                                              ^
 Transmit|                                              |Deliver
-        v                                              |       
-   +----+----------------+            +----------------+----+  
-   |  Source             |            |             Accept  |  
-   |       \             |            |             /       |  
-   |       (Decide)      |            |      (Decide)       |  
-   |              \      |            |      /              |  
-   |               \     |            |     /               |  
-   +----------------+----+            +----+----------------+  
-                    |                      ^                   
-                    |Forward        Receive|            
-                    v                      |                  
-                  +-----------~  ~---------+-+       
-                  |     Forwarding Hop(s)    |       
-                  +-----------~  ~-----------+       
+        v                                              |
+   +----+----------------+            +----------------+----+
+   |  Source             |            |             Accept  |
+   |       \             |            |             /       |
+   |       (Decide)      |            |      (Decide)       |
+   |              \      |            |      /              |
+   |               \     |            |     /               |
+   +----------------+----+            +----+----------------+
+                    |                      ^
+                    |Forward        Receive|
+                    v                      |
+                  +-----------~  ~---------+-+
+                  |     Forwarding Hop(s)    |
+                  +-----------~  ~-----------+
 ]]></artwork>
           </figure>
           <t>
@@ -209,20 +209,20 @@ The negotiated security service is sourced immediately before forwarding (specif
             <artwork align="center" type="ascii-art"><![CDATA[
         |                                          ^
 Transmit|                                          |Deliver
-        v                                          |       
-   +----+----------------+        +----------------+----+  
-   |     \               |        |               /     |  
+        v                                          |
+   +----+----------------+        +----------------+----+
+   |     \               |        |               /     |
    |      \              |        |              /      |
-   |      (Decide)       |        |       (Decide)      |  
-   |      /       \      |        |      /       \      |  
-   |     /       Source  |        |  Accept       \     |  
-   +----+-----------+----+        +----+-----------+----+  
-        ^           |                  ^           |       
+   |      (Decide)       |        |       (Decide)      |
+   |      /       \      |        |      /       \      |
+   |     /       Source  |        |  Accept       \     |
+   +----+-----------+----+        +----+-----------+----+
+        ^           |                  ^           |
  Receive|           |Forward    Receive|           |Forward
-        |           v                  |           v      
-                  +--------------------+-+       
-                  |    Forwarding Hop    |       
-                  +----------------------+       
+        |           v                  |           v
+                  +--------------------+-+
+                  |    Forwarding Hop    |
+                  +----------------------+
 ]]></artwork>
           </figure>
           <t>
@@ -394,27 +394,27 @@ The CK Discard activity is used to inform the RX end when the CK will no longer 
 |Entity A|               |Entity B|
 |(TX end)|               |(RX end)|
 +--------+               +--------+
-    |<===== SA Creation ====>|     
-    |          ...           |     
-    |                        |     
-    |        optional        |     
-    |        CK Prekey       |     
-    |<-----------------------+     
-    |- - - - - - - - - - - ->|     
-    |                        |     
-    |       CK Creation      |     
-    +----------------------->|     
-    |<- - - - - - - - - - - -|     
-    |                        |     
-    |        Use CK in       |     
-    |        data plane      |     
-    +----------------------->|     
-    +----------------------->|     
-    |                        |     
-    |        optional        |     
-    |        CK Discard      |     
-    +----------------------->|     
-    |<- - - - - - - - - - - -|     
+    |<===== SA Creation ====>|
+    |          ...           |
+    |                        |
+    |        optional        |
+    |        CK Prekey       |
+    |<-----------------------+
+    |- - - - - - - - - - - ->|
+    |                        |
+    |       CK Creation      |
+    +----------------------->|
+    |<- - - - - - - - - - - -|
+    |                        |
+    |        Use CK in       |
+    |        data plane      |
+    +----------------------->|
+    +----------------------->|
+    |                        |
+    |        optional        |
+    |        CK Discard      |
+    +----------------------->|
+    |<- - - - - - - - - - - -|
 ]]></artwork>
         </figure>
         <t>
@@ -2179,33 +2179,33 @@ The number of concurrent SC activities allowed to be started at each step is lim
       <figure>
         <name>Notional States of a Primary SA</name>
         <artwork align="center" type="ascii-art"><![CDATA[
-    +-----------+              
-    |   Start   |              
-    +-----+-----+              
-IA step 0 |                     
-          |                     
-  +-------v--------+            
-  |                |            
-  |  Initializing  <---.         
-  |                |   |         
+    +-----------+
+    |   Start   |
+    +-----+-----+
+IA step 0 |
+          |
+  +-------v--------+
+  |                |
+  |  Initializing  <---.
+  |                |   |
   +-------+---+----+   | IA step 1-2
 IA step 3 |   |        |
-          |   '--------`         
-          |                     
-  +-------v--------+            
-  |                |            
-  |   Established  <---.       
-  |                |   | SA Rekey
-  +-------+------+-+   | (optional) 
-ST step 0 |      |     |       
-          |      '-----`       
-    +-----v-----+              
-    | Half Down |              
-    +-----------+              
-ST step 1 |                    
-    +-----v-----+              
-    |  Removed  |              
-    +-----------+              
+          |   '--------`
+          |
+  +-------v--------+
+  |                |
+  |   Established  <---.
+  |                |   | CK activities
+  +-------+------+-+   | (optional)
+ST step 0 |      |     |
+          |      '-----`
+    +-----v-----+
+    | Half Down |
+    +-----------+
+ST step 1 |
+    +-----v-----+
+    |  Removed  |
+    +-----------+
 ]]></artwork>
       </figure>
     </section>
@@ -2218,9 +2218,9 @@ One of the final PRKs, the <tt>PRK_exporter</tt>, is used for "EDHOC application
       <figure anchor="fig-key-schedule">
         <name>SAFE Key Schedule</name>
         <artwork align="center" type="ascii-art"><![CDATA[
-      EDHOC                      
-   PRK_Exporter                  
-        |                        
+      EDHOC
+   PRK_Exporter
+        |
 +-------|-----------------------+
 | exp.  v         Primary SA    |
 |label->Exp.                    |

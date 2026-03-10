@@ -60,7 +60,7 @@ But without any additional scoping added to the derived keys (<em>e.g.</em>, val
           </t>
           <t>
 This technique alone also provides confidentiality of the derived symmetric keys but does not provide any authentication of the peer entity (via some identity binding to the associated private key).
-It also does not allow for forward secrecy because the original asymmetric keys need to be long-lived enough to handle all communications between the entities.
+It also does not allow for forward secrecy (FS) because the original asymmetric keys need to be long-lived enough to handle all communications between the entities.
           </t>
         </dd>
       </dl>
@@ -310,9 +310,9 @@ EDHOC also allows using external authorization data (EAD) items to confidentiall
 A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and initial symmetric keys for that primary SA.
 The primary SA keys provide SAFE message confidentiality after the initial authentication EDHOC session (see <xref target="sec-sa-use-safe-withpsa"/>).
 After a primary SA is established, this protocol allows creating secondary SAs through a single 1.5 round-trip activity without re-authenticating.
-It also allows managing established SAs, both primary and secondary, including life-cycle management of symmetric keys (re-keying with forward secrecy and decommissioning), in order to bound key use over time and over volume of processed data.
+It also allows managing established SAs, both primary and secondary, including life-cycle management of subordinate symmetric keys (re-keying with optional forward secrecy and decommissioning), in order to bound key use over time and over volume of processed data.
       </t>
-      <figure>
+      <figure anchor="fig-sa-hierarchy">
         <name>Relationships between SAs and their key material</name>
         <artwork align="center" type="ascii-art"><![CDATA[
 +-----------------------------------------+               
@@ -632,7 +632,7 @@ Each SAFE entity maintains a table of in-progress activities and their associate
             </tr>
             <tr>
               <td>Activity Index</td>
-              <td>The index, unique to the initiator, for the activity.</td>
+              <td>The index for the activity, which is unique to and defined by the initiator.</td>
             </tr>
             <tr>
               <td align="center" colspan="2">Properties below are based on the above key columns.</td>
@@ -640,6 +640,10 @@ Each SAFE entity maintains a table of in-progress activities and their associate
             <tr>
               <td>Last Step Transmitted (LTX)</td>
               <td>The step of the activity which is associated with the last message sent to the peer.</td>
+            </tr>
+            <tr>
+              <td>Last Message Transmitted</td>
+              <td>The logic of activity step ARQ requires messages to be re-transmitted with the same content as the original. One way this can be controlled by each entity is to simply retain an encoded form of each TX message until it is acknowledged by the subsequent activity step. The actual mechanism of retaining and re-transmitting each message is implementation defined.</td>
             </tr>
             <tr>
               <td>Last Step Received (LRX)</td>
@@ -656,7 +660,7 @@ After the final message of an activity is received, the associated table row is 
       <section anchor="sec-info-sa-primary">
         <name>Primary Security Associations</name>
         <t>
-Each primary SA allows SAFE entities to provide PDU-level confidentiality and is used as the source of a shared secret from which secondary SAs can be derived.
+Each primary SA allows SAFE entities to provide PDU-level confidentiality and is used as the source of a shared secret from which secondary SAs can be derived, as depicted in <xref target="fig-sa-hierarchy"/>.
 The state of each primary SA known to the local entity has logical columns as indicated in <xref target="tab-info-sa-pri"/>.
         </t>
         <t>
@@ -704,28 +708,29 @@ This applies to SAFE confidential PDU processing defined in <xref target="sec-sa
               <td>Hash Algorithm</td>
               <td>
 The "application hash algorithm" from the EDHOC cipher suite negotiated as part of the IA activity.
-This applies to the <tt>SAFE_KDF</tt> function defined in <xref target="sec-deriv-ssa-create"/>.
+This applies to the <tt>SAFE_KDF</tt> function defined in <xref target="sec-deriv-psa-prk"/>.
               </td>
             </tr>
             <tr>
               <td>Primary pseudo-random key (PRK)</td>
               <td>
-Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA1</tt> defined in <xref target="sec-deriv-psa-create"/>.
-This is used to derive further values for secondary SAs as defined in <xref target="sec-deriv-ssa-create"/> and content key material.
+Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA1</tt> defined in <xref target="sec-deriv-psa-prk"/>.
+This is used to derive further values for secondary SAs as defined in <xref target="sec-deriv-ssa-prk"/> and content key material.
               </td>
             </tr>
             <tr>
               <td>TX Content Keys</td>
               <td>
-The primary SA has one or more content keys for outgoing PDUs to the Peer EID, as a COSE key with contents as defined in <xref target="sec-deriv-psa-create"/>.
-<cref>TBD initialization vector (IV)</cref>
+The primary SA has one or more content keys for outgoing PDUs to the Peer EID.
+Each content key has the information defined in <xref target="tab-info-sa-pri-txck"/> and is scoped within a single primary SA.
 The associated key material is derived from the shared secret created during <xref format="title" target="sec-act-ia"/> and <xref format="title" target="sec-act-cc"/> activities.
               </td>
             </tr>
             <tr>
               <td>RX Content Keys</td>
               <td>
-The primary SA has one or more content keys for incoming PDUs from the Peer EID, as a COSE key with contents as defined in <xref target="sec-deriv-psa-create"/>.
+The primary SA has one or more content keys for incoming PDUs from the Peer EID.
+Each content key has the information defined in <xref target="tab-info-sa-pri-rxck"/> and is scoped within a single primary SA.
 The associated key material is derived from the shared secret created during an <xref format="title" target="sec-act-ia"/> activity.
               </td>
             </tr>
@@ -734,25 +739,92 @@ The associated key material is derived from the shared secret created during an 
               <td>
 A set of one-time-use private asymmetric key material used to process received CK Creation activities.
 These private keys are generated locally and their associated public prekeys are communicated to the peer entity via CK Prekey activities.
-Each private prekey has the information defined in <xref target="tab-info-sa-pri-localpre"/> and is scoped within a single primary SA.
+Each private prekey has the information defined in <xref target="tab-info-sa-pri-rxpre"/> and is scoped within a single primary SA.
               </td>
             </tr>
             <tr>
-              <td>Peer Public Prekeys</td>
+              <td>TX Prekeys</td>
               <td>
 A set of one-time-use public key material used to process and initiate CK Creation activities.
 These public keys are received from the peer entity through CK Prekey activities.
-Each public prekey has the information defined in <xref target="tab-info-sa-pri-peerpre"/> and is scoped within a single primary SA.
+Each public prekey has the information defined in <xref target="tab-info-sa-pri-txpre"/> and is scoped within a single primary SA.
               </td>
             </tr>
           </tbody>
         </table>
         <t>
-The information in <xref target="tab-info-sa-pri-localpre"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
-An entity <bcp14>SHOULD</bcp14> remove any Local Private Prekey when the wall-clock time advances past the end of its validity time interval.
+The information in <xref target="tab-info-sa-pri-txck"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
+An entity <bcp14>SHOULD</bcp14> remove any TX Content Key when the wall-clock time advances past the end of its validity time interval.
         </t>
-        <table align="center" anchor="tab-info-sa-pri-localpre">
-          <name>Local Private Prekeys Columns</name>
+        <table align="center" anchor="tab-info-sa-pri-txck">
+          <name>TX Content Keys Columns</name>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Key ID</td>
+              <td>A byte string identifier for this key, chosen by the local entity.</td>
+            </tr>
+            <tr>
+              <td>Validity Time Interval</td>
+              <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the local entity.</td>
+            </tr>
+            <tr>
+              <td>Partial IV Counter</td>
+              <td>
+An unsigned 64-bit integer counter used to construct Partial IV byte strings for outgoing SAFE PDUs as defined in <xref target="sec-sa-use-safe-withpsa"/>.
+The initial value of each counter for a new content key <bcp14>SHOULD</bcp14> be zero.
+              </td>
+            </tr>
+            <tr>
+              <td>Symmetric Key</td>
+              <td>
+The actual private key material and intrinsic metadata such as acceptable algorithm types.
+This logically corresponds to COSE Key information for a symmetric key with structure defined in <xref target="sec-deriv-psa-keys"/>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <t>
+The information in <xref target="tab-info-sa-pri-rxck"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
+An entity <bcp14>SHOULD</bcp14> remove any RX Content Key when the wall-clock time advances past the end of its validity time interval.
+        </t>
+        <table align="center" anchor="tab-info-sa-pri-rxck">
+          <name>RX Content Keys Columns</name>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Key ID</td>
+              <td>A byte string identifier for this key, chosen by the peer entity.</td>
+            </tr>
+            <tr>
+              <td>Validity Time Interval</td>
+              <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the peer entity.</td>
+            </tr>
+            <tr>
+              <td>Symmetric Key</td>
+              <td>
+The actual private key material and intrinsic metadata such as acceptable algorithm types.
+This logically corresponds to COSE Key information for a symmetric key with structure defined in <xref target="sec-deriv-psa-keys"/>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <t>
+The information in <xref target="tab-info-sa-pri-rxpre"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
+An entity <bcp14>SHOULD</bcp14> remove any RX Prekey when the wall-clock time advances past the end of its validity time interval.
+        </t>
+        <table align="center" anchor="tab-info-sa-pri-rxpre">
+          <name>RX Prekeys Columns</name>
           <thead>
             <tr>
               <th>Name</th>
@@ -778,11 +850,11 @@ This logically corresponds to COSE Key information for a private key.
           </tbody>
         </table>
         <t>
-The information in <xref target="tab-info-sa-pri-peerpre"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
-An entity <bcp14>SHOULD</bcp14> remove any Peer Public Prekey when the wall-clock time advances past the end of its validity time interval.
+The information in <xref target="tab-info-sa-pri-txpre"/> is implicitly scoped to a single primary SA and does not have an explicit relationship in that table.
+An entity <bcp14>SHOULD</bcp14> remove any TX Prekey when the wall-clock time advances past the end of its validity time interval.
         </t>
-        <table align="center" anchor="tab-info-sa-pri-peerpre">
-          <name>Peer Public Prekeys Columns</name>
+        <table align="center" anchor="tab-info-sa-pri-txpre">
+          <name>TX Prekeys Columns</name>
           <thead>
             <tr>
               <th>Name</th>
@@ -792,7 +864,7 @@ An entity <bcp14>SHOULD</bcp14> remove any Peer Public Prekey when the wall-cloc
           <tbody>
             <tr>
               <td>Peer Key ID</td>
-              <td>A peer-defined unique byte string identifier for this key.</td>
+              <td>A unique byte string identifier for this key, chosen by the peer entity.</td>
             </tr>
             <tr>
               <td>Validity Time Interval</td>
@@ -890,7 +962,7 @@ The options are negotiated during <xref format="title" target="sec-act-sc"/> as 
               <td>Key Information</td>
               <td>
 This field represent a set of context-specific key material and derived options for each direction between the two peers.
-The key material are derived from the shared secret created during <xref format="title" target="sec-act-sc"/> as defined in <xref target="sec-deriv-ssa-create"/> and per-context specifications (see <xref target="sec-sa-use"/>).
+The key material are derived from the shared secret created during <xref format="title" target="sec-act-sc"/> as defined in <xref target="sec-deriv-ssa-prk"/> and per-context specifications (see <xref target="sec-sa-use"/>).
               </td>
             </tr>
           </tbody>
@@ -1344,7 +1416,7 @@ When the Message 2 payload is received by the initiator, both peers have establi
 When the Message 3 payload is received by the responder, both peers have authenticated each other and established an application AEAD symmetric key and exporter state.
           </t>
           <t>
-Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-psa-create"/>.
+Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-psa-prk"/>.
           </t>
         </section>
       </section>
@@ -1490,60 +1562,7 @@ $$sc-data //= (8: safe-nti)
 $$sc-data //= (4: safe-kus)
         </sourcecode>
         <t>
-Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-ssa-create"/>.
-        </t>
-      </section>
-      <section anchor="sec-act-cc">
-        <name>CK Creation (CC)</name>
-        <t>
-This activity is used to establish a new set of derived key (and possibly other) material within an existing SA without changing the other parameters of the SA (<em>e.g.</em>, algorithm choice or endpoint selectors).
-The SA Rekey (SR) activity <bcp14>SHALL</bcp14> be identified by activity type 4.
-        </t>
-        <t keepWithNext="true">
-The sequence of steps and their data for this activity are the following:
-        </t>
-        <ul>
-          <li>Step 0: The payload is a map containing data items as defined below.</li>
-          <li>Step 1: The payload is a map containing data items as defined below.</li>
-          <li>Step 2: No payload, message is acknowledgement.</li>
-        </ul>
-        <table align="center">
-          <name>SA Rekey Data Items</name>
-          <thead>
-            <tr>
-              <th>Label</th>
-              <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>The local SAI per <xref target="sec-data-sai"/></td>
-            </tr>
-            <tr>
-              <td>2</td>
-              <td>A key exchange public key per <xref target="sec-data-ake"/></td>
-            </tr>
-            <tr>
-              <td>3</td>
-              <td>A random nonce per <xref target="sec-data-arn"/></td>
-            </tr>
-          </tbody>
-        </table>
-        <sourcecode type="cddl">
-sr-data = {* $$sr-data } .within data-map
-
-; Error codes from the responder
-$$sr-data //= (0: safe-ete)
-; SAI for the sender
-$$sr-data //= (1: safe-sai)
-
-; Optional PRF parameters
-$$sr-data //= (2: safe-ake)
-$$sr-data //= (3: safe-arn)
-        </sourcecode>
-        <t>
-Upon the first reception or transmission of SR step 1, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and rekey it based on the data derived in <xref target="sec-deriv-psa-rekey"/> or <xref target="sec-deriv-ssa-rekey"/> respectively.
+Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-ssa-prk"/>.
         </t>
       </section>
       <section anchor="sec-act-st">
@@ -1583,6 +1602,113 @@ $$st-data //= (0: safe-ete)
 ; SAI for the sender
 $$st-data //= (1: safe-sai / true)
         </sourcecode>
+      </section>
+      <section anchor="sec-act-cp">
+        <name>CK Prekey (CP)</name>
+        <t>
+This activity is used to preemptively share a one-time-use public key which can be used to add forward secrecy to later-derived content keys in the <xref format="title" target="sec-act-cc"/> activity.
+The recipient of the CP activity will be the initiator of the later CC activity.
+The SA Prekey (SP) activity <bcp14>SHALL</bcp14> be identified by activity type 5.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 2: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>SA Rekey Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>The KID for the prekey created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>.</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>A <xref format="title" target="sec-data-nti"/> used as the prekey validity time interval.</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>The sender's one-time-use public key, as defined in <xref target="sec-data-ake"/>.</td>
+            </tr>
+          </tbody>
+        </table>
+        <sourcecode type="cddl">
+cp-data = {* $$cp-data } .within data-map
+
+; SAI for the responder
+$$sr-data //= (1: safe-sai)
+; KID for the prekey being shared by the initiator
+$$cp-data //= (2: safe-kid)
+$$cp-data //= (3: safe-nti)
+$$cp-data //= (4: safe-ake)
+        </sourcecode>
+        <t>
+Upon the first reception of CP step 0, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and store the prekey information within the SA.
+        </t>
+      </section>
+      <section anchor="sec-act-cc">
+        <name>CK Creation (CC)</name>
+        <t>
+This activity is used to establish a new set of derived key (and possibly other) material within an existing SA without changing the other parameters of the SA (<em>e.g.</em>, algorithm choice or endpoint selectors).
+The SA Rekey (SR) activity <bcp14>SHALL</bcp14> be identified by activity type 6.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 2: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>SA Rekey Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>An optional identifier for a prekey, shared by the responder in an earlier <xref format="title" target="sec-act-cp"/> activity, as defined in <xref target="sec-data-kid"/></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>An optional random nonce per <xref target="sec-data-arn"/></td>
+            </tr>
+          </tbody>
+        </table>
+        <sourcecode type="cddl">
+sr-data = {* $$sr-data } .within data-map
+
+; Error codes from the responder
+$$sr-data //= (0: safe-ete)
+; SAI for the responder
+$$sr-data //= (1: safe-sai)
+
+; Optional PRF parameters
+$$sr-data //= (2: safe-kid)
+$$sr-data //= (3: safe-arn)
+        </sourcecode>
+        <t>
+Upon the first reception or transmission of SR step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+        </t>
       </section>
       <section anchor="sec-act-en">
         <name>Event Notification (EN)</name>
@@ -1684,6 +1810,22 @@ An SAI <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC con
         </t>
         <sourcecode type="cddl">
 safe-sai = (bstr .size (0..8)) / (-24..23)
+</sourcecode>
+      </section>
+      <section anchor="sec-data-kid">
+        <name>Key Identifier (KID)</name>
+        <t>
+The Key Identifier (KID) data item is used by both sides of an SA to uniquely identify a shared content key or prekey within each entity.
+All KIDs are guaranteed unique within the parent primary SA context, but each entity is able to reuse KID values across different primary SAs.
+Each content key has a single KID defined by the entity which initiated the creation of the symmetric key, and each content prekey has a single KID defined by the entity which holds the associated private key.
+        </t>
+        <t>
+An SAI <bcp14>SHALL</bcp14> be treated as an opaque byte string as its internal representation and comparison logic.
+An SAI <bcp14>SHALL</bcp14> be limited to a length between 0 and 8 bytes inclusive.
+An SAI <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC connection identifiers as defined in <xref section="3.3.2" target="RFC9528"/>.
+        </t>
+        <sourcecode type="cddl">
+safe-kid = (bstr .size (0..8)) / (-24..23)
 </sourcecode>
       </section>
       <section anchor="sec-data-ake">
@@ -1918,13 +2060,96 @@ ST step 1 |
       <name>Shared Secret Derivations</name>
       <t>
 Within the <xref format="title" target="sec-act-ia"/> activity, a shared secret is established and internal pseudo-random keys (PRKs) for EDHOC processing are derived.
-One of the final PRKs, the <tt>PRK_exporter</tt>, is used for "EDHOC application" purposes which in this case means SAFE entity use.
+One of the final PRKs, the <tt>PRK_exporter</tt>, is used for "EDHOC application" purposes which in this case means SAFE entity use as depicted in <xref target="fig-key-schedule"/> and defined in the following subsections.
       </t>
-      <section anchor="sec-deriv-psa-create">
-        <name>Primary SA Creation</name>
+      <figure anchor="fig-key-schedule">
+        <name>SAFE Key Schedule</name>
+        <artwork align="center" type="ascii-art"><![CDATA[
+      EDHOC                      
+   PRK_Exporter                  
+        |                        
++-------|-----------------------+
+| exp.  v         Primary SA    |
+|label->O                       |
+|       |                       |
+|       v                       |
+|    PRK_SA1                    |
+|       |        Each CK        |
+|       +--------+-...-+        |
+|       |        v     v        |
+|       |  KID-->O     O<--KID  |
+|       |        |     |        |
+|       |        v     v        |
+|             SK_SA1 SK_SA1     |
++-------|-----------------------+
++-------|-----------------------+
+|       v     Each Secondary SA |
+|SAIs-->O                       |
+|       |                       |
+|       v                       |
+|    PRK_SA2                    |
+|       |        Each CK        |
+|       +--------+-...-+        |
+|                v     v        |
+|          KID-->O     O<--KID  |
+|                |     |        |
+|                v     v        |
+|             SK_SA2 SK_SA2     |
++-------------------------------+
+]]></artwork>
+      </figure>
+      <section anchor="sec-deriv-psa-prk">
+        <name>Primary SA PRK</name>
         <t>
-The primary SA is used to manage derived data for two independent purposes: key parameters for message security between the SAFE endpoints themselves, and as the PRK shared secret used to derive secondary SAs between the two SAFE entities.
+The primary SA is used to manage derived data for two independent purposes: content keys for message security between the SAFE endpoints themselves, and as the PRK used to derive secondary SAs between the two SAFE entities.
         </t>
+        <t>
+The EDHOC processes which generate the <tt>PRK_Exporter</tt> secret bind that PRK to all of the transcript hash (TH) data from the EDHOC session, which includes the <tt>C_I</tt> and <tt>C_R</tt> identifiers as they are part of EDHOC message 1 and message 2 respectively.
+Because the primary SA uses those connection identifiers as the SAI for each side of the primary SA creation, there is no additional context needed to derive the PRK for the primary SA.
+The associated <tt>EDHOC_Exporter</tt> is used once during primary SA creation to derive a seed PRK for the entire primary SA.
+        </t>
+        <figure anchor="fig-deriv-psa-prk">
+          <name>Primary SA Creation</name>
+          <sourcecode>
+PRK_SA1 = EDHOC_Exporter(TBA4, '', hash_length)
+          </sourcecode>
+        </figure>
+        <t>
+An application-level derivation function <tt>SAFE_KDF</tt> is defined with the same logic as the <tt>EDHOC_KDF</tt> in <xref section="4.1.2" target="RFC9528"/> except using the Hash Algorithm of the Primary SA.
+The pseudocode defining this KDF is in <xref target="fig-deriv-safe-kdf"/>.
+This KDF is used within each primary SA to derive <xref target="sec-deriv-psa-keys">content keys</xref> and <xref target="sec-deriv-ssa-prk">secondary SA PRKs</xref>.
+        </t>
+        <figure anchor="fig-deriv-safe-kdf">
+          <name>Primary SA derived values</name>
+          <sourcecode>
+SAFE_KDF(PRK, info_label, context, length)
+  = EDHOC_KDF(PRK, info_label, context, length)
+          </sourcecode>
+        </figure>
+        <t>
+A summary of labels used with <tt>SAFE_KDF</tt> and the <tt>PRK_SA1</tt> is listed in <xref target="tab-prk_sa1-labels"/>
+        </t>
+        <table anchor="tab-prk_sa1-labels">
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>Secondary SA PRK in <xref target="sec-deriv-ssa-prk"/>.</td>
+            </tr>
+            <tr>
+              <td>1, 2</td>
+              <td>Primary SA content keys in <xref target="sec-deriv-psa-keys"/>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section anchor="sec-deriv-psa-keys">
+        <name>Primary SA Content Keys</name>
         <t>
 The primary SA key uses take the form of COSE key objects as defined in <xref section="7" target="RFC9052"/>.
 Because the acceptable algorithms are limited to AEAD encryption, the acceptable operations for each key in each entity are one of: encrypt (3), or decrypt (4).
@@ -1941,79 +2166,69 @@ Notably, these keys do not contain a <tt>kid</tt> parameter because they are not
           <dt><tt>key_ops</tt> (4):</dt>
           <dd>Either encrypt (3) if this entity is the IA initiator and the key is for traffic from the initiator side, or decrypt (4) otherwise</dd>
           <dt><tt>Base IV</tt> (5):</dt>
-          <dd>Either <tt>BIV_IR</tt> (from <xref target="fig-deriv-psa-create"/>) if the key is for traffic from the initiator side, or <tt>BIV_RI</tt> otherwise</dd>
+          <dd>Either <tt>BIV_IR</tt> (from <xref target="fig-deriv-psa-keys"/>) if the key is for traffic from the initiator side, or <tt>BIV_RI</tt> otherwise</dd>
           <dt><tt>k</tt> (-1):</dt>
-          <dd>Either <tt>K_IR</tt> (from <xref target="fig-deriv-psa-create"/>) if the key is for traffic from the initiator side, or <tt>K_RI</tt> otherwise</dd>
+          <dd>Either <tt>K_IR</tt> (from <xref target="fig-deriv-psa-keys"/>) if the key is for traffic from the initiator side, or <tt>K_RI</tt> otherwise</dd>
         </dl>
         <t>
-Pseudocode used to explain this is shown in <xref target="fig-deriv-psa-create"/>, where the named parameters are:
+Pseudocode used to explain this is shown in <xref target="fig-deriv-psa-keys"/>, where the named parameters are:
         </t>
         <dl>
+          <dt><tt>KID</tt>:</dt>
+          <dd>The <xref format="title" target="sec-data-kid"/> from the initiator as an encoded CBOR byte string.</dd>
+          <dt><tt>ARN</tt>:</dt>
+          <dd>The <xref format="title" target="sec-data-arn"/> from the initiator, or the empty byte string if no such data item was received, as an encoded CBOR byte string.</dd>
+          <dt><tt>PRK_FS</tt>:</dt>
+          <dd>The shared secret derived from <xref format="title" target="sec-data-ake"/> from both the initiator and responder, or the empty byte string if AKE was not received from both entities</dd>
+          <dt><tt>PRK_SA1</tt>:</dt>
+          <dd>The PRK from the Primary SA.</dd>
           <dt><tt>key_length</tt>:</dt>
-          <dd>The length of the encryption key for the "application AEAD algorithm" of the EDHOC cipher suite.</dd>
+          <dd>The length of the encryption key for the AEAD Algorithm of the Primary SA.</dd>
           <dt><tt>iv_length</tt>:</dt>
-          <dd>The length of the initialization vector for the "application AEAD algorithm" of the EDHOC cipher suite.</dd>
-          <dt><tt>hash_length</tt>:</dt>
-          <dd>The length of output size of the "application hash algorithm" of the EDHOC cipher suite.</dd>
+          <dd>The length of the initialization vector for the AEAD Algorithm of the Primary SA.</dd>
         </dl>
-        <figure anchor="fig-deriv-psa-create">
+        <figure anchor="fig-deriv-psa-keys">
           <name>Primary SA Creation</name>
           <sourcecode>
-K_IR   = EDHOC_Exporter(TBA4, 'key_ir', key_length)
-BIV_IR = EDHOC_Exporter(TBA4, 'biv_ir', iv_length)
+context_ck1 = KID | ARN | PRK_FS
 
-K_RI   = EDHOC_Exporter(TBA4, 'key_ri', key_length)
-BIV_RI = EDHOC_Exporter(TBA4, 'biv_ri', iv_length)
-
-PRK_SA1 = EDHOC_Exporter(TBA4, 'prk_sa1', hash_length)
-          </sourcecode>
-        </figure>
-        <t>
-The "_ir" derived values apply to SAFE traffic from the initiator to the responder of the IA activity, and the "_ri" derived values apply to SAFE traffic in the other direction.
-        </t>
-      </section>
-      <section anchor="sec-deriv-psa-rekey">
-        <name>Primary SA Rekey</name>
-        <t>
-This procedure is based on the example from <xref section="H" target="RFC9528"/>.
-        </t>
-        <t>
-
-        </t>
-        <figure anchor="fig-deriv-ssa-rekey">
-          <name>Primary SA Rekey</name>
-          <sourcecode>
-context_rekey = ARN(i) | ARN(r) | G_XY
-PRK_out, PRK_exporter = EDHOC_KeyUpdate(context_rekey)
+SK_SA1   = SAFE_KDF(PRK_SA1, 1, context_ck1, key_length)
+BIV_SA1 = SAFE_KDF(PRK_SA1, 2, context_ck1, iv_length)
           </sourcecode>
         </figure>
       </section>
-      <section anchor="sec-deriv-ssa-create">
-        <name>Secondary SA Creation</name>
+      <section anchor="sec-deriv-ssa-prk">
+        <name>Secondary SA PRK</name>
         <t>
-An application-level derivation function <tt>SAFE_KDF</tt> is defined with the same logic as the <tt>EDHOC_KDF</tt> in <xref section="4.1.2" target="RFC9528"/> except using the "application hash algorithm" of the EDHOC cipher suite.
-This KDF is used once per secondary SA to derive a seed PRK for the entire SA.
+The <tt>SAFE_KDF</tt> is used once during secondary SA creation to derive a seed PRK for the entire secondary SA.
         </t>
         <t>
-Pseudocode used to explain this is shown in <xref target="fig-deriv-ssa-create"/>, where the named parameters are:
+Pseudocode used to explain this is shown in <xref target="fig-deriv-ssa-prk"/>, where the named parameters are:
         </t>
         <dl>
           <dt><tt>SAI(i)</tt> and <tt>SAI(r)</tt>:</dt>
           <dd>The <xref format="title" target="sec-data-sai"/> from the initiator and responder respectively</dd>
           <dt><tt>ARN(i)</tt> and <tt>ARN(r)</tt>:</dt>
           <dd>The <xref format="title" target="sec-data-arn"/> from the initiator and responder respectively, or the empty byte string if no such data item was received</dd>
-          <dt><tt>G_XY</tt>:</dt>
+          <dt><tt>PRK_FS</tt>:</dt>
           <dd>The shared secret derived from <xref format="title" target="sec-data-ake"/> from both the initiator and responder, or the empty byte string if AKE was not received from both entities</dd>
+          <dt><tt>PRK_SA1</tt>:</dt>
+          <dd>The PRK from the parent Primary SA.</dd>
+          <dt><tt>hash_length</tt>:</dt>
+          <dd>The length of output size of the Hash Algorithm of the Primary SA.</dd>
         </dl>
-        <figure anchor="fig-deriv-ssa-create">
+        <figure anchor="fig-deriv-ssa-prk">
           <name>Secondary SA derived PRK</name>
           <sourcecode>
-context_sa2 = SAI(i) | SAI(r) | ARN(i) | ARN(r) | G_XY
+context_sa2 = SAI(i) | SAI(r) | ARN(i) | ARN(r) | PRK_FS
 PRK_SA2 = SAFE_KDF(PRK_SA1, 0, context_sa2, hash_length)
           </sourcecode>
         </figure>
+      </section>
+      <section anchor="sec-deriv-ssa-keys">
+        <name>Secondary SA Content Keys</name>
         <t>
-Additional output key material (OKM) specific to the BPSec security context being used is then derived from the <tt>PRK_SA2</tt> value with integer labels for different purposes.
+Additional output key material (OKM) specific to the BPSec security context being used is derived from the <tt>PRK_SA2</tt> value with integer labels for different, security-context-specific purposes.
 It is part of the obligation of each BPSec key use to define what label values apply to key material needed by that context.
 An IANA registry for recording these labels is defined in <xref target="sec-iana-safe"/>.
         </t>
@@ -2035,10 +2250,6 @@ SAFE_OKM(ctxid, context, length)
   = SAFE_KDF(PRK_SA2, ctxid, context, length)
           </sourcecode>
         </figure>
-      </section>
-      <section anchor="sec-deriv-ssa-rekey">
-        <name>Secondary SA Rekey</name>
-        <t><cref>TBD</cref></t>
       </section>
     </section>
     <section anchor="sec-sa-use">
@@ -2094,10 +2305,14 @@ After the IA activity has completed (initiator has sent, responder has received)
           </t>
           <ol>
             <li>
+Select a single key from the TX Content Keys of the Primary SA as defined in <xref target="sec-info-sa-primary"/>.
+The choice of key is implementation dependent, but <bcp14>SHALL</bcp14> have a validity time interval which includes the current wall-clock time.
+            </li>
+            <li>
 Iterate through and encode a CBOR sequence of byte strings items for all messages in the plaintext.
             </li>
             <li>
-Increment the Partial IV counter associated with the peer entity.
+Increment the Partial IV counter associated with the TX content key.
             </li>
             <li>
 Encode the Partial IV as a minimum-length byte string in network byte order.
@@ -2111,7 +2326,7 @@ Encode the Partial IV as a minimum-length byte string in network byte order.
                   <t>An encoded map containing the following pairs:</t>
                   <dl newline="true">
                     <dt>alg (1):</dt>
-                    <dd>The "application AEAD algorithm" of the EDHOC cipher suite from the Primary SA.</dd>
+                    <dd>The AEAD Algorithm of the Primary SA.</dd>
                     <dt>kid context (10):</dt>
                     <dd>The Peer SAI of the Primary SA as a direct byte string.</dd>
                   </dl>
@@ -2125,7 +2340,7 @@ Encode the Partial IV as a minimum-length byte string in network byte order.
                   </dl>
                 </dd>
                 <dt>key:</dt>
-                <dd>Either <tt>K_IR</tt> or <tt>K_RI</tt> of <xref target="sec-deriv-psa-create"/> from the Primary SA for the initiator or responder respectively, which will include a Base IV key parameter.</dd>
+                <dd>The COSE key of the selected TX content key from the Primary SA, which will include a Base IV key parameter.</dd>
                 <dt>plaintext:</dt>
                 <dd>The encoded plaintext from above</dd>
                 <dt><tt>external_aad</tt>:</dt>
@@ -2171,7 +2386,7 @@ Internally generate and decrypt a COSE_Encrypt0 object as defined in <xref secti
                   <t>An encoded map containing the following pairs:</t>
                   <dl newline="true">
                     <dt>alg (1):</dt>
-                    <dd>The "application AEAD algorithm" of the EDHOC cipher suite from the Primary SA.</dd>
+                    <dd>The AEAD Algorithm of the Primary SA.</dd>
                     <dt>kid context (10):</dt>
                     <dd>The Local SAI of the Primary SA as a direct byte string.</dd>
                   </dl>
@@ -2185,7 +2400,7 @@ Internally generate and decrypt a COSE_Encrypt0 object as defined in <xref secti
                   </dl>
                 </dd>
                 <dt>key:</dt>
-                <dd>Either <tt>K_IR</tt> or <tt>K_RI</tt> of <xref target="sec-deriv-ssa-create"/> from the Secondary SA for the initiator or responder respectively.</dd>
+                <dd>Either <tt>K_IR</tt> or <tt>K_RI</tt> of <xref target="sec-deriv-ssa-prk"/> from the Secondary SA for the initiator or responder respectively.</dd>
                 <dt>ciphertext:</dt>
                 <dd>The <tt>ciphertext</tt> field of the PDU payload.</dd>
                 <dt><tt>external_aad</tt>:</dt>
@@ -2200,7 +2415,7 @@ Iterate through, decode, and process the CBOR sequence of byte strings items for
             </li>
           </ol>
           <t>
-For both encryption and decryption, the Base IV (defined in <xref target="sec-deriv-psa-create"/>) present in the keys of the Primary SA is combined with the Partial IV byte string in accordance with <xref section="3.1" target="RFC9052"/>.
+For both encryption and decryption, the Base IV (defined in <xref target="sec-deriv-psa-prk"/>) present in the keys of the Primary SA is combined with the Partial IV byte string in accordance with <xref section="3.1" target="RFC9052"/>.
           </t>
         </section>
       </section>
@@ -3121,18 +3336,24 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             </tr>
             <tr>
               <td>5</td>
+              <td>CK Prekey</td>
+              <td>SP</td>
+              <td><xref target="sec-act-cp"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>6</td>
               <td>CK Creation</td>
               <td>SR</td>
               <td><xref target="sec-act-cc"/> of [This specification]</td>
             </tr>
             <tr>
-              <td>6</td>
+              <td>7</td>
               <td>CK Discard</td>
               <td>SR</td>
               <td><xref target="sec-act-cc"/> of [This specification]</td>
             </tr>
             <tr>
-              <td>7 to 32767</td>
+              <td>8 to 32767</td>
               <td><em>Unassigned</em></td>
               <td/>
               <td/>

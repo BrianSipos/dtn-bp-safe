@@ -43,10 +43,8 @@ ciphersuite
 ciphersuites
 ciphertext
 Ciphertext
-CLA
 CKs
-KIDs
-lifecycle
+CLA
 clset
 CNSA
 codepoints
@@ -55,6 +53,7 @@ controllability
 Conv
 Corbett
 COSE
+CP
 CRC
 CRLs
 crypto
@@ -92,6 +91,7 @@ ESx
 ETE
 extensibility
 FQDN
+FS
 GCM
 hdr
 HMAC
@@ -116,8 +116,10 @@ KDF
 keepalive
 Keepalive
 KeyUpdate
+KIDs
 kty
 KUS
+lifecycle
 Lifecycle
 LLC
 LRX
@@ -170,6 +172,7 @@ prk
 PRK
 PRKs
 PSAs
+pseudocode
 Pseudocode
 pseudorandom
 PSK

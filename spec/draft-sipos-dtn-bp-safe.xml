@@ -304,7 +304,7 @@ To avoid coupling each SAFE entity with any BPSec entity on the same node, SAFE 
       </t>
       <t>
 The initial confidential channel between a pair of SAFE entities is provided by an Ephemeral Diffie-Hellman Over COSE (EDHOC) session <xref target="RFC9528"/> and <xref target="sec-protocol-edhoc"/>, which includes forward secrecy, mutual authentication, and proof-of-possession.
-EDHOC also allows using external authorization data (EAD) items to confidentially transport SAND messages during session establishment (see <xref target="sec-sa-use-safe-nopsa"/>), which avoids excess delay before negotiating secondary SAs.
+EDHOC also allows using external authorization data (EAD) items to confidentially transport SAFE messages during session establishment (see <xref target="sec-sa-use-safe-nopsa"/>), which avoids excess delay before negotiating secondary SAs.
       </t>
       <t>
 A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and initial symmetric keys for that primary SA.

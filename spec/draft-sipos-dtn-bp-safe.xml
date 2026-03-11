@@ -728,14 +728,14 @@ This applies to SAFE confidential PDU processing defined in <xref target="sec-sa
               <td>Hash Algorithm</td>
               <td>
 The "application hash algorithm" from the EDHOC cipher suite negotiated as part of the IA activity.
-This applies to the <tt>SAFE_KDF</tt> function defined in <xref target="sec-deriv-psa-prk"/>.
+This applies to the <tt>SAFE_EXT</tt> and <tt>SAFE_EXP</tt> functions defined in <xref target="sec-deriv"/>.
               </td>
             </tr>
             <tr>
               <td>Primary pseudo-random key (PRK)</td>
               <td>
-Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA1</tt> defined in <xref target="sec-deriv-psa-prk"/>.
-This is used to derive further values for secondary SAs as defined in <xref target="sec-deriv-ssa-prk"/> and content key material.
+Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA</tt> defined in <xref target="sec-deriv-sa-prk"/>.
+This is used to derive further values for content key material as defined in <xref target="sec-deriv-psa-keys"/>.
               </td>
             </tr>
             <tr>
@@ -940,14 +940,6 @@ This is a mode selector for this SA, as defined in <xref target="sec-data-sms"/>
               </td>
             </tr>
             <tr>
-              <td>Validity Time Interval</td>
-              <td>
-An optional interval of time during which the SA is valid.
-The logic is consistent with the node time interval (NTI) of <xref target="sec-data-nti"/>.
-If absent, the SA is valid for all time.
-              </td>
-            </tr>
-            <tr>
               <td>Local Endpoint Selectors</td>
               <td>
 This is an unordered set of endpoint selector items for the local side of the SA, as described below and in <xref target="sec-data-esx"/>.
@@ -979,10 +971,17 @@ The options are negotiated during <xref format="title" target="sec-act-sc"/> as 
               </td>
             </tr>
             <tr>
-              <td>Key Information</td>
+              <td>Secondary PRK</td>
+              <td>
+Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA</tt> defined in <xref target="sec-deriv-sa-prk"/>.
+This is used to derive further values for content key material as defined in <xref target="sec-deriv-ssa-keys"/>.
+              </td>
+            </tr>
+            <tr>
+              <td>TX and RX Content Keys</td>
               <td>
 This field represent a set of context-specific key material and derived options for each direction between the two peers.
-The key material are derived from the shared secret created during <xref format="title" target="sec-act-sc"/> as defined in <xref target="sec-deriv-ssa-prk"/> and per-context specifications (see <xref target="sec-sa-use"/>).
+The key material are derived from the shared secret created during <xref format="title" target="sec-act-sc"/> as defined in <xref target="sec-deriv-ssa-keys"/> and per-context specifications (see <xref target="sec-sa-use"/>).
               </td>
             </tr>
           </tbody>
@@ -1436,7 +1435,8 @@ When the Message 2 payload is received by the initiator, both peers have establi
 When the Message 3 payload is received by the responder, both peers have authenticated each other and established an application AEAD symmetric key and exporter state.
           </t>
           <t>
-Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-psa-prk"/>.
+Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA as defined in <xref target="sec-info-sa-primary"/> based on the data derived in <xref target="sec-deriv-sa-prk"/>.
+Each entity <bcp14>SHALL</bcp14> populate the primary SA with one TX Content Key and one RX Content Key each with a KID of the empty byte string as defined in <xref target="sec-deriv-psa-keys"/>.
           </t>
         </section>
       </section>
@@ -2078,7 +2078,7 @@ ST step 1 |
 ]]></artwork>
       </figure>
     </section>
-    <section anchor="sec-sa-deriv">
+    <section anchor="sec-deriv">
       <name>Shared Secret Derivations</name>
       <t>
 Within the <xref format="title" target="sec-act-ia"/> activity, a shared secret is established and internal pseudo-random keys (PRKs) for EDHOC processing are derived.
@@ -2087,88 +2087,77 @@ One of the final PRKs, the <tt>PRK_exporter</tt>, is used for "EDHOC application
       <figure anchor="fig-key-schedule">
         <name>SAFE Key Schedule</name>
         <artwork align="center" type="ascii-art"><![CDATA[
-      EDHOC                      
-   PRK_Exporter                  
-        |                        
-+-------|-----------------------+
-| exp.  v         Primary SA    |
-|label->O                       |
-|       |                       |
-|       v                       |
-|    PRK_SA1                    |
-|       |        Each CK        |
-|       +--------+-...-+        |
-|       |        v     v        |
-|       |  KID-->O     O<--KID  |
-|       |        |     |        |
-|       |        v     v        |
-|             SK_SA1 SK_SA1     |
-+-------|-----------------------+
-+-------|-----------------------+
-|       v     Each Secondary SA |
-|SAIs-->O                       |
-|       |                       |
-|       v                       |
-|    PRK_SA2                    |
-|       |        Each CK        |
-|       +--------+-...-+        |
-|                v     v        |
-|          KID-->O     O<--KID  |
-|                |     |        |
-|                v     v        |
-|             SK_SA2 SK_SA2     |
-+-------------------------------+
+EDHOC                                              
+PRK_Exporter                                       
+ |                                                 
+ |   +--------------------------------------------+
+ |   |                               Primary SA / |
+ |   |    LABEL,SAI_i,SAI_r          Secondary SA |
+ |   |     |                                      |
+ |   |     v                                      |
+ +------>(EXP)                                    |
+ |   |     |                                      |
+ |   |  PRK_SA                                    |
+ |   |     |                                      |
+ |   | +---|------------------------------------+ |
+ |   | |   |                 KID        Content | |
+ |   | |   |                  |             Key | |
+ |   | |   | [use KEM]        v                 | |
+ |   | |   +--------------->(EXP)               | |
+ |   | |   |                  |                 | |
+ |   | |   |[no KEM]       SALT_CK              | |
+ |   | |   |                  |                 | |
+ |   | |   |                  v                 | |
+ .   | |   |  (KEM)-AKM_CK->(EXT)               | |
+ .   | |   |                  |                 | |
+ .   | |   |               PRK_CK   IDX,KID,ARN | |
+     | |   |                  |     |||         | |
+     | |   |                  v     vvv         | |
+     | |   +----------------->O--->(EXP)        | |
+     | |                            |||         | |
+     | |                            vvv         | |
+     | +----------------------------------------+ |
+     +--------------------------------------------+
 ]]></artwork>
       </figure>
-      <section anchor="sec-deriv-psa-prk">
-        <name>Primary SA PRK</name>
+      <t>
+An application-level extraction function <tt>SAFE_EXT</tt> is defined with the same logic as the <tt>EDHOC_Extract</tt> from <xref section="4.1.1" target="RFC9528"/> except using the Hash Algorithm of the Primary SA (which is the "application hash algorithm" from the EDHOC ciphersuite).
+The pseudocode defining this function is in <xref target="fig-deriv-safe_ext"/>.
+      </t>
+      <figure anchor="fig-deriv-safe_ext">
+        <name>SAFE Extract function</name>
+        <sourcecode>
+SAFE_EXT(salt, IKM)
+  = EDHOC_Extract(salt, IKM)
+        </sourcecode>
+      </figure>
+      <t>
+An application-level expansion function <tt>SAFE_EXP</tt> is defined with the same logic as the <tt>EDHOC_Expand</tt> in <xref section="4.1.2" target="RFC9528"/> except using the Hash Algorithm of the Primary SA (which is the "application hash algorithm" from the EDHOC ciphersuite).
+The pseudocode defining this KDF is in <xref target="fig-deriv-safe_exp"/>.
+      </t>
+      <figure anchor="fig-deriv-safe_exp">
+        <name>SAFE Expand function</name>
+        <sourcecode>
+SAFE_EXP(PRK, context, length)
+  = EDHOC_Expand(PRK, context | length, length)
+        </sourcecode>
+      </figure>
+      <section anchor="sec-deriv-sa-prk">
+        <name>Primary and Secondary SA PRK</name>
         <t>
-The primary SA is used to manage derived data for two independent purposes: content keys for message security between the SAFE endpoints themselves, and as the PRK used to derive secondary SAs between the two SAFE entities.
+Each primary and secondary SA is created with a unique SAI from each peer, so the pair of SAI values provides a unique context for deriving an SA-specific, stable PRK of fixed-length (based on the EDHOC ciphersuite).
         </t>
         <t>
-The EDHOC processes which generate the <tt>PRK_Exporter</tt> secret bind that PRK to all of the transcript hash (TH) data from the EDHOC session, which includes the <tt>C_I</tt> and <tt>C_R</tt> identifiers as they are part of EDHOC message 1 and message 2 respectively.
-Because the primary SA uses those connection identifiers as the SAI for each side of the primary SA creation, there is no additional context needed to derive the PRK for the primary SA.
-The associated <tt>EDHOC_Exporter</tt> is used once during primary SA creation to derive a seed PRK for the entire primary SA.
+The EDHOC processes which generate the input <tt>PRK_Exporter</tt> causes that PRK to be bound to all of the transcript hash (TH) data from the EDHOC session, including the ephemeral keys used to establish that session.
+That <tt>EDHOC_Exporter</tt> is used once during each SA creation to derive a seed PRK for the entire SA.
+The PRK of each SA is then used to deterministically derive content keys under that specific SA.
         </t>
         <figure anchor="fig-deriv-psa-prk">
           <name>Primary SA Creation</name>
           <sourcecode>
-PRK_SA1 = EDHOC_Exporter(TBA4, '', hash_length)
+PRK_SA = EDHOC_Exporter(TBA4, SAI_i | SAI_r, hash_length)
           </sourcecode>
         </figure>
-        <t>
-An application-level derivation function <tt>SAFE_KDF</tt> is defined with the same logic as the <tt>EDHOC_KDF</tt> in <xref section="4.1.2" target="RFC9528"/> except using the Hash Algorithm of the Primary SA.
-The pseudocode defining this KDF is in <xref target="fig-deriv-safe-kdf"/>.
-This KDF is used within each primary SA to derive <xref target="sec-deriv-psa-keys">content keys</xref> and <xref target="sec-deriv-ssa-prk">secondary SA PRKs</xref>.
-        </t>
-        <figure anchor="fig-deriv-safe-kdf">
-          <name>Primary SA derived values</name>
-          <sourcecode>
-SAFE_KDF(PRK, info_label, context, length)
-  = EDHOC_KDF(PRK, info_label, context, length)
-          </sourcecode>
-        </figure>
-        <t>
-A summary of labels used with <tt>SAFE_KDF</tt> and the <tt>PRK_SA1</tt> is listed in <xref target="tab-prk_sa1-labels"/>
-        </t>
-        <table anchor="tab-prk_sa1-labels">
-          <thead>
-            <tr>
-              <th>Label</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>0</td>
-              <td>Secondary SA PRK in <xref target="sec-deriv-ssa-prk"/>.</td>
-            </tr>
-            <tr>
-              <td>1, 2</td>
-              <td>Primary SA content keys in <xref target="sec-deriv-psa-keys"/>.</td>
-            </tr>
-          </tbody>
-        </table>
       </section>
       <section anchor="sec-deriv-psa-keys">
         <name>Primary SA Content Keys</name>
@@ -2437,7 +2426,7 @@ Iterate through, decode, and process the CBOR sequence of byte strings items for
             </li>
           </ol>
           <t>
-For both encryption and decryption, the Base IV (defined in <xref target="sec-deriv-psa-prk"/>) present in the keys of the Primary SA is combined with the Partial IV byte string in accordance with <xref section="3.1" target="RFC9052"/>.
+For both encryption and decryption, the Base IV (defined in <xref target="sec-deriv-psa-keys"/>) present in the keys of the Primary SA is combined with the Partial IV byte string in accordance with <xref section="3.1" target="RFC9052"/>.
           </t>
         </section>
       </section>

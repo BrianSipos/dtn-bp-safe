@@ -13,9 +13,6 @@ AEAD
 AES
 AKE
 AKM
-decapsulate
-decapsulated
-decapsulation
 alg
 anycast
 APL
@@ -70,6 +67,9 @@ datagrams
 dbus
 DCCP
 de
+decapsulate
+decapsulated
+decapsulation
 decodable
 deconflict
 decrypt

@@ -1582,7 +1582,7 @@ $$sc-data //= (8: safe-nti)
 $$sc-data //= (4: safe-kus)
         </sourcecode>
         <t>
-Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-ssa-prk"/>.
+Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-prk_sa"/> with no initial content keys or prekeys.
         </t>
       </section>
       <section anchor="sec-act-st">
@@ -2102,10 +2102,10 @@ PRK_Exporter
  |   | +---|------------------------------------+ |
  |   | |   |            KID_CK,KID_PK   Content | |
  |   | |   |                  |             Key | |
- |   | |   | [use KEM]        v                 | |
+ |   | |   | [use PK]         v                 | |
  |   | |   +--------------->(EXP)               | |
  |   | |   |                  |                 | |
- |   | |   |[no KEM]       SALT_CK              | |
+ |   | |   |[no PK]        SALT_CK              | |
  |   | |   |                  |                 | |
  |   | |   |                  v                 | |
  .   | |   |  (KEM)-AKM_CK->(EXT)               | |
@@ -2116,6 +2116,7 @@ PRK_Exporter
      | |   +----------------->O--->(EXP)        | |
      | |                            |||         | |
      | |                            vvv         | |
+     | |                            OKM         | |
      | +----------------------------------------+ |
      +--------------------------------------------+
 ]]></artwork>
@@ -2139,9 +2140,14 @@ The pseudocode defining this KDF is in <xref target="fig-deriv-safe_exp"/>.
         <name>SAFE Expand function</name>
         <sourcecode>
 SAFE_EXP(PRK, context, length)
-  = EDHOC_Expand(PRK, context | length, length)
+  = EDHOC_Expand(PRK, context | E(length), length)
         </sourcecode>
       </figure>
+      <t>
+In this document the notation "|" is used to indicate the concatenation of deterministically encoded CBOR items as a CBOR sequence without byte string wrapping.
+So in the definition of expand function above, the length is encoded and concatenated to the context sequence and used as opaque bytes by the EDHOC function.
+This is not a different mechanism than the EDHOC "info" rule sequence, just a different notation in pseudocode. 
+      </t>
       <section anchor="sec-deriv-prk_sa">
         <name>Security Association PRK</name>
         <t>
@@ -2152,10 +2158,21 @@ The EDHOC processes which generate the input <tt>PRK_Exporter</tt> causes that P
 That <tt>EDHOC_Exporter</tt> is used once during each SA creation to derive a seed PRK for the entire SA.
 The PRK of each SA is then used to deterministically derive content keys under that specific SA.
         </t>
-        <figure anchor="fig-deriv-psa-prk">
+        <t>
+Pseudocode used to explain this is shown in <xref target="fig-deriv-prk_sa"/>, where the named parameters are:
+        </t>
+        <dl>
+          <dt>The value <cref>TBA4</cref>:</dt>
+          <dd>The exporter label allocated to BP SAFE.</dd>
+          <dt><tt>SAI_i</tt> and <tt>SAI_r</tt>:</dt>
+          <dd>The <xref format="title" target="sec-data-sai"/> from the initiator and responder respectively</dd>
+          <dt><tt>hash_length</tt>:</dt>
+          <dd>The length of output size of the Hash Algorithm of the Primary SA.</dd>
+        </dl>
+        <figure anchor="fig-deriv-prk_sa">
           <name>Primary SA Creation</name>
           <sourcecode>
-PRK_SA = EDHOC_Exporter(TBA4, SAI_i | SAI_r, hash_length)
+PRK_SA = EDHOC_Exporter(TBA4, E(SAI_i) | E(SAI_r), hash_length)
           </sourcecode>
         </figure>
       </section>
@@ -2174,7 +2191,7 @@ When a prekey is referenced during SA creation, the <tt>PRK_CK</tt> is extracted
         <figure anchor="fig-deriv-prk_ck">
           <name>Content Key PRK pseudocode</name>
           <sourcecode>
-SALT_CK = SAFE_EXP(PRK_SA, KID_CK | KID_PK, hash_length)
+SALT_CK = SAFE_EXP(PRK_SA, E(KID_CK) | E(KID_PK), hash_length)
 PRK_CK = SAFE_EXT(SALT_CK, AKM_CK)
           </sourcecode>
         </figure>
@@ -2224,38 +2241,10 @@ Pseudocode used to explain this is shown in <xref target="fig-deriv-psa-keys"/>,
         <figure anchor="fig-deriv-psa-keys">
           <name>SA Creation pseudocode</name>
           <sourcecode>
-context_ck1 = KID | ARN
+context_ck1 = E(KID) | E(ARN)
 
-SK_SA1   = SAFE_EXP(PRK_CK, 1 | context_ck1, key_length)
-BIV_SA1 = SAFE_EXP(PRK_CK, 2 | context_ck1, iv_length)
-          </sourcecode>
-        </figure>
-      </section>
-      <section anchor="sec-deriv-ssa-prk">
-        <name>Secondary SA PRK</name>
-        <t>
-The <tt>SAFE_EXP</tt> is used once during secondary SA creation to derive a seed PRK for the entire secondary SA.
-        </t>
-        <t>
-Pseudocode used to explain this is shown in <xref target="fig-deriv-ssa-prk"/>, where the named parameters are:
-        </t>
-        <dl>
-          <dt><tt>SAI(i)</tt> and <tt>SAI(r)</tt>:</dt>
-          <dd>The <xref format="title" target="sec-data-sai"/> from the initiator and responder respectively</dd>
-          <dt><tt>ARN(i)</tt> and <tt>ARN(r)</tt>:</dt>
-          <dd>The <xref format="title" target="sec-data-arn"/> from the initiator and responder respectively, or the empty byte string if no such data item was received</dd>
-          <dt><tt>PRK_FS</tt>:</dt>
-          <dd>The shared secret derived from <xref format="title" target="sec-data-ake"/> from both the initiator and responder, or the empty byte string if AKE was not received from both entities</dd>
-          <dt><tt>PRK_SA1</tt>:</dt>
-          <dd>The PRK from the parent Primary SA.</dd>
-          <dt><tt>hash_length</tt>:</dt>
-          <dd>The length of output size of the Hash Algorithm of the Primary SA.</dd>
-        </dl>
-        <figure anchor="fig-deriv-ssa-prk">
-          <name>Secondary SA derived PRK</name>
-          <sourcecode>
-context_sa2 = SAI(i) | SAI(r) | ARN(i) | ARN(r) | PRK_FS
-PRK_SA2 = SAFE_EXP(PRK_SA1, 0, context_sa2, hash_length)
+SK_SA1   = SAFE_EXP(PRK_CK, E(1) | context_ck1, key_length)
+BIV_SA1 = SAFE_EXP(PRK_CK, E(2) | context_ck1, iv_length)
           </sourcecode>
         </figure>
       </section>
@@ -2399,16 +2388,20 @@ Use the result to construct the following PDU fields, named as in <xref target="
 Because this encoding does not use AAD to bind it to specific transport parameters, the entire PDU can be retained and retransmitted if necessary (see <xref target="sec-layers-retrans"/>).
           </t>
           <t keepWithNext="true">
-Upon receiving an PDU containing a non-null <tt>partial-iv</tt> value, the SAFE entity <bcp14>SHALL</bcp14> decrypt the aggregated messages according to the following.
+Upon receiving an PDU containing a non-null <tt>partial-iv</tt> and <tt>psa-kid</tt> values, the SAFE entity <bcp14>SHALL</bcp14> decrypt the aggregated messages according to the following.
           </t>
           <ol>
             <li>
-              <t>
 Use the provided <tt>rx-sai</tt> to match with the Local SAI of one Primary SA.
-              </t>
-              <t>
-If no match is found then <cref>TBD</cref>.
-              </t>
+If no match is found then the PDU is considered to be invalid and is dropped.
+            </li>
+            <li>
+Use the provided <tt>psa-kid</tt> to match with one of the RX Content Keys of the Primary SA.
+If no match is found then the entity <bcp14>MAY</bcp14> retain the PDU for an implementation defined period of time awaiting an associated CK Create activity.
+Otherwise the PDU is considered to be invalid and is dropped.
+            </li>
+            <li>
+If the Bundle Creation Time associated with the PDU is not within the validity time interval of the RX Content Key, the PDU is considered to be invalid and is dropped.
             </li>
             <li>
               <t>
@@ -2434,22 +2427,24 @@ Internally generate and decrypt a COSE_Encrypt0 object as defined in <xref secti
                   </dl>
                 </dd>
                 <dt>key:</dt>
-                <dd>Either <tt>K_IR</tt> or <tt>K_RI</tt> of <xref target="sec-deriv-ssa-prk"/> from the Secondary SA for the initiator or responder respectively.</dd>
+                <dd>The COSE key from the matched RX Content Key (defined in <xref target="tab-info-sa-pri-rxck"/>).</dd>
                 <dt>ciphertext:</dt>
                 <dd>The <tt>ciphertext</tt> field of the PDU payload.</dd>
                 <dt><tt>external_aad</tt>:</dt>
                 <dd>A byte string encoding the CBOR Sequence <tt>safe-pdu-aad</tt> (as defined in <xref target="fig-safe-pdu"/>, and using the same encoding as the PDU).</dd>
               </dl>
               <t>
-If decryption fails then <cref>TBD</cref>.
+If decryption fails then the PDU is considered to be invalid and is dropped.
               </t>
             </li>
             <li>
 Iterate through, decode, and process the CBOR sequence of byte strings items for all messages in the plaintext.
+The failure to process any message in the plaintext <bcp14>SHALL NOT</bcp14> affect the decoding and processing of any other message in the same plaintext.
+Any optional padding item in the plaintext is ignored.
             </li>
           </ol>
           <t>
-For both encryption and decryption, the Base IV (defined in <xref target="sec-deriv-psa-keys"/>) present in the keys of the Primary SA is combined with the Partial IV byte string in accordance with <xref section="3.1" target="RFC9052"/>.
+For both encryption and decryption, the Base IV (defined in <xref target="sec-deriv-psa-keys"/>) present in the COSE key of each TX and RX Content Key of the Primary SA is combined with the Partial IV byte string in accordance with <xref section="3.1" target="RFC9052"/>.
           </t>
         </section>
       </section>

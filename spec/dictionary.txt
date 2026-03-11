@@ -40,8 +40,6 @@ cddl
 CDDL
 checksums
 Cherita
-ciphersuite
-ciphersuites
 ciphertext
 Ciphertext
 CKs
@@ -167,6 +165,7 @@ Pipelining
 PIV
 PKI
 PKIX
+PKS
 plaintext
 PQC
 pre

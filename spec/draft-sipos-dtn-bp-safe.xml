@@ -734,7 +734,7 @@ This applies to the <tt>SAFE_EXT</tt> and <tt>SAFE_EXP</tt> functions defined in
             <tr>
               <td>Primary pseudo-random key (PRK)</td>
               <td>
-Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA</tt> defined in <xref target="sec-deriv-sa-prk"/>.
+Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA</tt> defined in <xref target="sec-deriv-prk_sa"/>.
 This is used to derive further values for content key material as defined in <xref target="sec-deriv-psa-keys"/>.
               </td>
             </tr>
@@ -973,7 +973,7 @@ The options are negotiated during <xref format="title" target="sec-act-sc"/> as 
             <tr>
               <td>Secondary PRK</td>
               <td>
-Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA</tt> defined in <xref target="sec-deriv-sa-prk"/>.
+Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA</tt> defined in <xref target="sec-deriv-prk_sa"/>.
 This is used to derive further values for content key material as defined in <xref target="sec-deriv-ssa-keys"/>.
               </td>
             </tr>
@@ -1435,7 +1435,7 @@ When the Message 2 payload is received by the initiator, both peers have establi
 When the Message 3 payload is received by the responder, both peers have authenticated each other and established an application AEAD symmetric key and exporter state.
           </t>
           <t>
-Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA as defined in <xref target="sec-info-sa-primary"/> based on the data derived in <xref target="sec-deriv-sa-prk"/>.
+Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA as defined in <xref target="sec-info-sa-primary"/> based on the data derived in <xref target="sec-deriv-prk_sa"/>.
 Each entity <bcp14>SHALL</bcp14> populate the primary SA with one TX Content Key and one RX Content Key each with a KID of the empty byte string as defined in <xref target="sec-deriv-psa-keys"/>.
           </t>
         </section>
@@ -2100,7 +2100,7 @@ PRK_Exporter
  |   |  PRK_SA                                    |
  |   |     |                                      |
  |   | +---|------------------------------------+ |
- |   | |   |                 KID        Content | |
+ |   | |   |            KID_CK,KID_PK   Content | |
  |   | |   |                  |             Key | |
  |   | |   | [use KEM]        v                 | |
  |   | |   +--------------->(EXP)               | |
@@ -2142,8 +2142,8 @@ SAFE_EXP(PRK, context, length)
   = EDHOC_Expand(PRK, context | length, length)
         </sourcecode>
       </figure>
-      <section anchor="sec-deriv-sa-prk">
-        <name>Primary and Secondary SA PRK</name>
+      <section anchor="sec-deriv-prk_sa">
+        <name>Security Association PRK</name>
         <t>
 Each primary and secondary SA is created with a unique SAI from each peer, so the pair of SAI values provides a unique context for deriving an SA-specific, stable PRK of fixed-length (based on the EDHOC ciphersuite).
         </t>
@@ -2159,27 +2159,52 @@ PRK_SA = EDHOC_Exporter(TBA4, SAI_i | SAI_r, hash_length)
           </sourcecode>
         </figure>
       </section>
+      <section anchor="sec-deriv-prk_ck">
+        <name>Content Key PRK</name>
+        <t>
+Each content key material is derived from a PRK which can either have forward secrecy or not, depending on a choice made by the initiator of the CK Create activity.
+Either the CK Create activity references an associated Prekey known to the responder, which is used to derive or decapsulate ephemeral additional key material (AKM) used for forward secrecy, or it does not reference a prekey and no forward secrecy is provided.
+        </t>
+        <t>
+When no prekey is referenced during SA creation, the <tt>PRK_CK</tt> used is the associated <tt>PRK_SA</tt> value of the parent SA.
+        </t>
+        <t>
+When a prekey is referenced during SA creation, the <tt>PRK_CK</tt> is extracted based on the prekey and the <tt>PRK_SA</tt> value as shown in <xref target="fig-deriv-prk_ck"/>.
+        </t>
+        <figure anchor="fig-deriv-prk_ck">
+          <name>Content Key PRK pseudocode</name>
+          <sourcecode>
+SALT_CK = SAFE_EXP(PRK_SA, KID_CK | KID_PK, hash_length)
+PRK_CK = SAFE_EXT(SALT_CK, AKM_CK)
+          </sourcecode>
+        </figure>
+        <t>
+When the prekey is an ECDH derivation key, the <tt>AKM_CK</tt> is the derived shared secret <tt>G_XY</tt>.
+When the prekey is a KEM decapsulation key, the <tt>AKM_CK</tt> is the decapsulated shared secret <tt>K</tt>.
+        </t>
+      </section>
       <section anchor="sec-deriv-psa-keys">
         <name>Primary SA Content Keys</name>
         <t>
-The primary SA key uses take the form of COSE key objects as defined in <xref section="7" target="RFC9052"/>.
+The primary SA content keys take the form of COSE key objects as defined in <xref section="7" target="RFC9052"/>.
 Because the acceptable algorithms are limited to AEAD encryption, the acceptable operations for each key in each entity are one of: encrypt (3), or decrypt (4).
         </t>
         <t keepWithNext="true">
-When the COSE algorithm is one of the AEAD algorithms, the COSE key <bcp14>SHALL</bcp14> contain the following parameters.
-Notably, these keys do not contain a <tt>kid</tt> parameter because they are not intended to be referenced from outside of the SAFE entity managing the primary SA.
+When creating a new primary SA content key, the COSE key <bcp14>SHALL</bcp14> contain the following parameters.
         </t>
         <dl newline="true">
           <dt><tt>kty</tt> (1):</dt>
-          <dd>The value Symmetric (4).</dd>
+          <dd>The value <em>Symmetric</em> (4).</dd>
+          <dt><tt>kid</tt> (2):</dt>
+          <dd>The KID byte string from the content key information, which may be the empty string.</dd>
           <dt><tt>alg</tt> (3):</dt>
-          <dd>The negotiated "application AEAD algorithm" from the IA activity.</dd>
+          <dd>The AEAD Algorithm of the primary SA.</dd>
           <dt><tt>key_ops</tt> (4):</dt>
-          <dd>Either encrypt (3) if this entity is the IA initiator and the key is for traffic from the initiator side, or decrypt (4) otherwise</dd>
+          <dd>Either <em>encrypt</em> (3) if this is a TX Content Key, or <em>decrypt</em> (4) if this is an RX Content Key</dd>
           <dt><tt>Base IV</tt> (5):</dt>
-          <dd>Either <tt>BIV_IR</tt> (from <xref target="fig-deriv-psa-keys"/>) if the key is for traffic from the initiator side, or <tt>BIV_RI</tt> otherwise</dd>
+          <dd>The <tt>BIV_SA1</tt> value from <xref target="fig-deriv-psa-keys"/>.</dd>
           <dt><tt>k</tt> (-1):</dt>
-          <dd>Either <tt>K_IR</tt> (from <xref target="fig-deriv-psa-keys"/>) if the key is for traffic from the initiator side, or <tt>K_RI</tt> otherwise</dd>
+          <dd>The <tt>SK_SA1</tt> value from <xref target="fig-deriv-psa-keys"/>.</dd>
         </dl>
         <t>
 Pseudocode used to explain this is shown in <xref target="fig-deriv-psa-keys"/>, where the named parameters are:
@@ -2189,29 +2214,27 @@ Pseudocode used to explain this is shown in <xref target="fig-deriv-psa-keys"/>,
           <dd>The <xref format="title" target="sec-data-kid"/> from the initiator as an encoded CBOR byte string.</dd>
           <dt><tt>ARN</tt>:</dt>
           <dd>The <xref format="title" target="sec-data-arn"/> from the initiator, or the empty byte string if no such data item was received, as an encoded CBOR byte string.</dd>
-          <dt><tt>PRK_FS</tt>:</dt>
-          <dd>The shared secret derived from <xref format="title" target="sec-data-ake"/> from both the initiator and responder, or the empty byte string if AKE was not received from both entities</dd>
-          <dt><tt>PRK_SA1</tt>:</dt>
-          <dd>The PRK from the Primary SA.</dd>
+          <dt><tt>PRK_CK</tt>:</dt>
+          <dd>Either the PRK extracted based on the local prekey, if a prekey was referenced by the initiator, or the PRK from the Primary SA.</dd>
           <dt><tt>key_length</tt>:</dt>
           <dd>The length of the encryption key for the AEAD Algorithm of the Primary SA.</dd>
           <dt><tt>iv_length</tt>:</dt>
           <dd>The length of the initialization vector for the AEAD Algorithm of the Primary SA.</dd>
         </dl>
         <figure anchor="fig-deriv-psa-keys">
-          <name>Primary SA Creation</name>
+          <name>SA Creation pseudocode</name>
           <sourcecode>
-context_ck1 = KID | ARN | PRK_FS
+context_ck1 = KID | ARN
 
-SK_SA1   = SAFE_KDF(PRK_SA1, 1, context_ck1, key_length)
-BIV_SA1 = SAFE_KDF(PRK_SA1, 2, context_ck1, iv_length)
+SK_SA1   = SAFE_EXP(PRK_CK, 1 | context_ck1, key_length)
+BIV_SA1 = SAFE_EXP(PRK_CK, 2 | context_ck1, iv_length)
           </sourcecode>
         </figure>
       </section>
       <section anchor="sec-deriv-ssa-prk">
         <name>Secondary SA PRK</name>
         <t>
-The <tt>SAFE_KDF</tt> is used once during secondary SA creation to derive a seed PRK for the entire secondary SA.
+The <tt>SAFE_EXP</tt> is used once during secondary SA creation to derive a seed PRK for the entire secondary SA.
         </t>
         <t>
 Pseudocode used to explain this is shown in <xref target="fig-deriv-ssa-prk"/>, where the named parameters are:
@@ -2232,7 +2255,7 @@ Pseudocode used to explain this is shown in <xref target="fig-deriv-ssa-prk"/>, 
           <name>Secondary SA derived PRK</name>
           <sourcecode>
 context_sa2 = SAI(i) | SAI(r) | ARN(i) | ARN(r) | PRK_FS
-PRK_SA2 = SAFE_KDF(PRK_SA1, 0, context_sa2, hash_length)
+PRK_SA2 = SAFE_EXP(PRK_SA1, 0, context_sa2, hash_length)
           </sourcecode>
         </figure>
       </section>
@@ -2258,7 +2281,7 @@ Pseudocode used to explain this is shown in <xref target="fig-deriv-secondary-ok
           <name>Secondary SA derived OKM</name>
           <sourcecode>
 SAFE_OKM(ctxid, context, length)
-  = SAFE_KDF(PRK_SA2, ctxid, context, length)
+  = SAFE_EXP(PRK_SA2, ctxid | context, length)
           </sourcecode>
         </figure>
       </section>

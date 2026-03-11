@@ -13,6 +13,9 @@ AEAD
 AES
 AKE
 AKM
+decapsulate
+decapsulated
+decapsulation
 alg
 anycast
 APL

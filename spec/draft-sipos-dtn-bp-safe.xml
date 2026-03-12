@@ -492,7 +492,10 @@ And each registry has a reserved block to allow private networks to make use of 
           <t>
 The EDHOC cipher suite, chosen by the initiator and agreed with the responder, controls the cryptographic algorithms used to secure the EDHOC session, derive internal key material, authenticate each entity to its peer, and to secure SAFE messages after the EDHOC session has completed.
 The base specification in <xref section="3.6" target="RFC9528"/> defines 9 cipher suites which cover capabilities all the way from lightweight algorithms targeting constrained processors to one which conforms to the US CNSS Commercial National Security Algorithm Suite (CNSA) 1.0 <xref target="CNSA1"/>.
-Additional cipher suites <xref target="I-D.spm-lake-pqsuites"/> enable the use of ML-KEM for EDHOC session confidentiality and ML-DSA for signature-based entity authentication which conform to CNSA 2.0 <xref target="CNSA2"/>.
+          </t>
+          <t>
+Additional cipher suites <xref target="I-D.spm-lake-pqsuites"/> enable the use of ML-KEM for EDHOC session confidentiality and ML-DSA for signature-based entity authentication which <cref>do not yet</cref> conform to CNSA 2.0 <xref target="CNSA2"/>.
+These cipher suites update the semantics of some fields in the EDHOC messages but not their structure or encoding.
           </t>
         </section>
         <section>
@@ -500,7 +503,10 @@ Additional cipher suites <xref target="I-D.spm-lake-pqsuites"/> enable the use o
           <t>
 The EDHOC method controls how each entity authenticates to its peer within an EDHOC session.
 The base specification in <xref section="3.2" target="RFC9528"/> defines four methods to cover authenticating each side with either an asymmetric-key signature or an elliptic-curve Diffie-Hellman (ECDH) derived-key MAC.
-Additional methods <xref target="I-D.pocero-authkem-edhoc"/> enable the use of ML-KEM for efficient MAC-based authentication in a way which conforms to CNSA 2.0.
+          </t>
+          <t>
+Additional methods <xref target="I-D.pocero-authkem-edhoc"/> enable the use of ML-KEM for efficient MAC-based authentication in a way which <cref>do not yet</cref> conforms to CNSA 2.0.
+These methods alter some behaviors related to the internal key schedule without affecting the names or uses of derived PRK values.
           </t>
         </section>
         <section>
@@ -514,10 +520,10 @@ Future credential types are expected to include pre-shared key material.
         <section>
           <name>SAFE Activity Types and Data Items</name>
           <t>
-The activity types defined in this document are expected to be sufficient for SA creation and management, but there is a registry of available types defined in <xref target="sec-iana-safe"/> for future expansion as necessary.
+The activity types defined in this document are expected to be sufficient for SA creation and management, but there is a registry of available types defined in <xref target="sec-iana-safe"/> for future expansion as necessary including reserved blocks for private and experimental uses.
           </t>
           <t>
-Within each activity type, specifically the <xref format="title" target="sec-act-sc"/> type, there is a block of code points reserved for private use and left unassigned for future specifications.
+Within each activity type, specifically the <xref format="title" target="sec-act-sc"/> type, there is a block of data item code points reserved for private use and a block left unassigned for future specifications.
 These are expected to include additional selectors for traffic flows beyond just source and destination EID from <xref target="sec-data-esx"/>.
           </t>
         </section>

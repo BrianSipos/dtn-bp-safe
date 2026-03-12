@@ -12,6 +12,7 @@ ADUs
 AEAD
 AES
 AKE
+AKM
 alg
 anycast
 APL
@@ -39,8 +40,6 @@ cddl
 CDDL
 checksums
 Cherita
-ciphersuite
-ciphersuites
 ciphertext
 Ciphertext
 CKs
@@ -66,6 +65,9 @@ datagrams
 dbus
 DCCP
 de
+decapsulate
+decapsulated
+decapsulation
 decodable
 deconflict
 decrypt
@@ -102,6 +104,7 @@ Idx
 IESG
 IETF
 IKEv
+IKM
 incrementing
 INIT
 interoperation
@@ -116,6 +119,7 @@ JHU
 KDF
 keepalive
 Keepalive
+KEM
 KeyUpdate
 KIDs
 kty
@@ -161,6 +165,7 @@ Pipelining
 PIV
 PKI
 PKIX
+PKS
 plaintext
 PQC
 pre
@@ -225,6 +230,7 @@ URI
 UTF
 UUID
 verifier
+vvv
 wireshark
 Wireshark
 xA

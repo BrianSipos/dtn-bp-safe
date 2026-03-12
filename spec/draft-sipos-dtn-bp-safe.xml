@@ -1802,7 +1802,7 @@ The CK Discard (CD) activity <bcp14>SHALL</bcp14> be identified by activity type
         </t>
         <t>
 It is an implementation matter to determine when to initiate a CK Discard activity.
-The CK Discard <bcp14>SHALL NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
+The CK Discard <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1852,7 +1852,7 @@ The CK Reject (CR) activity <bcp14>SHALL</bcp14> be identified by activity type 
         </t>
         <t>
 It is an implementation matter to determine when to initiate a CK Reject activity.
-The CK Reject <bcp14>SHALL NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
+The CK Reject <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:

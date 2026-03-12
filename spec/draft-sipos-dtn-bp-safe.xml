@@ -1437,7 +1437,8 @@ EAD items of label <cref>TBA5</cref> <bcp14>SHALL NOT</bcp14> be present in <tt>
         </t>
         <t>
 Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC <tt>message_3</tt>), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-psa-prk"/>.
-Any time after the first reception or transmission of IA step 2, either entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cp"/> or <xref format="title" target="sec-act-cc"/> activities which refer to the new SA.
+Any time after the first reception or transmission of IA step 2, either entity <bcp14>MAY</bcp14> initiate other activities which refer to the new SA.
+Before that step has occurred the primary SA is still being negotiated and has not yet been created.
         </t>
         <section anchor="sec-act-ia-edhoc">
           <name>EDHOC Requirements</name>
@@ -1496,7 +1497,7 @@ $$ci-data //= (3: bpsec-ctxid-list)
         </sourcecode>
         <t>
 It is not until reception of a peer's CI information that later activities can be initiated with the expectation that they will succeed.
-Any time after the first reception CI step 0 or 1, the receiving entity <bcp14>MAY</bcp14> initiate .
+Any time after the first reception of CI step 0 or 1, the receiving entity <bcp14>MAY</bcp14> initiate other activities which rely on the capabilities expressed in the CI data items.
         </t>
       </section>
       <section anchor="sec-act-en">
@@ -1636,7 +1637,8 @@ $$sc-data //= (4: safe-kus)
         </sourcecode>
         <t>
 Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-ssa-prk"/>.
-Any time after the first reception or transmission of SC step 1, either entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cp"/> or <xref format="title" target="sec-act-cc"/> activities which refer to the new SA.
+Any time after the first reception or transmission of SC step 1, either entity <bcp14>MAY</bcp14> initiate other activities which refer to the new SA.
+Before that step has occurred the secondary SA is still being negotiated and has not yet been created.
         </t>
       </section>
       <section anchor="sec-act-st">

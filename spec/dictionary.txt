@@ -74,6 +74,7 @@ Deduplication
 Diffie
 dns
 DNS
+DSA
 DTLS
 dtn
 DTN
@@ -117,6 +118,7 @@ JHU
 KDF
 keepalive
 Keepalive
+KEM
 KeyUpdate
 KIDs
 kty

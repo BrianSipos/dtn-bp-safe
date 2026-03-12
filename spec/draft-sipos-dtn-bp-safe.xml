@@ -491,15 +491,16 @@ And each registry has a reserved block to allow private networks to make use of 
           <name>EDHOC Cipher Suites</name>
           <t>
 The EDHOC cipher suite, chosen by the initiator and agreed with the responder, controls the cryptographic algorithms used to secure the EDHOC session, derive internal key material, authenticate each entity to its peer, and to secure SAFE messages after the EDHOC session has completed.
-The base specification in <xref section="3.6" target="RFC9528"/> defines 9 suites which cover capabilities all the way from lightweight algorithms targeting constrained processors to one which adheres to the US CNSS Commercial National Security Algorithm Suite (CNSA) 1.0 <xref target="CNSA1"/>.
+The base specification in <xref section="3.6" target="RFC9528"/> defines 9 cipher suites which cover capabilities all the way from lightweight algorithms targeting constrained processors to one which conforms to the US CNSS Commercial National Security Algorithm Suite (CNSA) 1.0 <xref target="CNSA1"/>.
+Additional cipher suites <xref target="I-D.spm-lake-pqsuites"/> enable the use of ML-KEM for EDHOC session confidentiality and ML-DSA for signature-based entity authentication which conform to CNSA 2.0 <xref target="CNSA2"/>.
           </t>
         </section>
         <section>
           <name>EDHOC Methods</name>
           <t>
 The EDHOC method controls how each entity authenticates to its peer within an EDHOC session.
-The base specification in <xref section="3.2" target="RFC9528"/> defines four methods to cover authenticating each side with either an asymmetric-key signature or a key-agreement-key MAC.
-Future methods are expected to provide access to post-quantum cryptographic (PQC) mechanisms.
+The base specification in <xref section="3.2" target="RFC9528"/> defines four methods to cover authenticating each side with either an asymmetric-key signature or an elliptic-curve Diffie-Hellman (ECDH) derived-key MAC.
+Additional methods <xref target="I-D.pocero-authkem-edhoc"/> enable the use of ML-KEM for efficient MAC-based authentication in a way which conforms to CNSA 2.0.
           </t>
         </section>
         <section>
@@ -1383,7 +1384,7 @@ The bundle creation timestamp (both DTN time and sequence number), defined in Ti
 This section defines the initial types of activity which make use of <xref target="sec-layers-msg">SAFE message</xref> sequencing to exchange data.
       </t>
       <t>
-Any current or future activity type <bcp14>SHALL</bcp14> define how many steps comprise a single sequence of messages and what is the required data payload of each step.
+Each activity type definition <bcp14>SHALL</bcp14> include how many steps comprise a single sequence of messages and what are the required and optional data payload of each step.
       </t>
       <section anchor="sec-act-ia">
         <name>Initial Authentication (IA)</name>
@@ -3630,6 +3631,8 @@ These entries are distinct and separate from the "EDHOC Error Codes" registry of
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-dtn-bibect.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-dtn-bpsec-cose.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-dtn-eid-pattern.xml"/>
+        <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.pocero-authkem-edhoc.xml"/>
+        <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.spm-lake-pqsuites.xml"/>
       </references>
       <references>
         <name>Informative References</name>

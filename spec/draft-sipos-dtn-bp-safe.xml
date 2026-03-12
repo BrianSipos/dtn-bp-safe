@@ -1809,7 +1809,7 @@ The sequence of steps and their data for this activity are the following:
         </t>
         <ul>
           <li>Step 0: The payload is a map containing data items as defined below.</li>
-          <li>Step 2: No payload, message is acknowledgement.</li>
+          <li>Step 1: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
           <name>CK Discard Data Items</name>
@@ -1859,7 +1859,7 @@ The sequence of steps and their data for this activity are the following:
         </t>
         <ul>
           <li>Step 0: The payload is a map containing data items as defined below.</li>
-          <li>Step 2: No payload, message is acknowledgement.</li>
+          <li>Step 1: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
           <name>CK Reject Data Items</name>

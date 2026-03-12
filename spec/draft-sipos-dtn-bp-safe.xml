@@ -1435,17 +1435,18 @@ Additionally, the <em>EAD</em> payload of the EDHOC messages are extended to be 
 Any number of EAD items of label <cref>TBA5</cref> and value matching the <tt>safe-msg-bstr</tt> rule (defined in <xref target="sec-layers-msg"/>) <bcp14>MAY</bcp14> be present in EDHOC lists <tt>EAD_2</tt>, <tt>EAD_3</tt>, and <tt>EAD_4</tt>.
 EAD items of label <cref>TBA5</cref> <bcp14>SHALL NOT</bcp14> be present in <tt>EAD_1</tt>, which is transported as plaintext.
         </t>
+        <t>
+Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC <tt>message_3</tt>), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-psa-prk"/>.
+Any time after the first reception or transmission of IA step 2, either entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cp"/> or <xref format="title" target="sec-act-cc"/> activities which refer to the new SA.
+        </t>
         <section anchor="sec-act-ia-edhoc">
           <name>EDHOC Requirements</name>
           <t>
-After receiving the <tt>ID_CRED_x</tt> values from a peer, each SAFE entity <bcp14>SHALL</bcp14>
+After receiving the <tt>ID_CRED_x</tt> values from a peer, each SAFE entity <bcp14>SHALL</bcp14> <cref>TBD</cref>.
           </t>
           <t>
 When the Message 2 payload is received by the initiator, both peers have established an EDHOC shared secret but only the responder has sent an identity to authenticate with the initiator.
 When the Message 3 payload is received by the responder, both peers have authenticated each other and established an application AEAD symmetric key and exporter state.
-          </t>
-          <t>
-Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC message_3), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-psa-prk"/>.
           </t>
         </section>
       </section>
@@ -1493,6 +1494,10 @@ $$ci-data //= (1: concur-act-limit)
 $$ci-data //= (2: eid-scheme-list)
 $$ci-data //= (3: bpsec-ctxid-list)
         </sourcecode>
+        <t>
+It is not until reception of a peer's CI information that later activities can be initiated with the expectation that they will succeed.
+Any time after the first reception CI step 0 or 1, the receiving entity <bcp14>MAY</bcp14> initiate .
+        </t>
       </section>
       <section anchor="sec-act-en">
         <name>Event Notification (EN)</name>
@@ -1631,12 +1636,14 @@ $$sc-data //= (4: safe-kus)
         </sourcecode>
         <t>
 Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-ssa-prk"/>.
+Any time after the first reception or transmission of SC step 1, either entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cp"/> or <xref format="title" target="sec-act-cc"/> activities which refer to the new SA.
         </t>
       </section>
       <section anchor="sec-act-st">
         <name>SA Teardown (ST)</name>
         <t>
 This activity is used to negotiate removal of an established SA from both entities.
+Either peer can initiate this activity for any reason at any time after the SA is created.
 The SA Teardown (ST) activity <bcp14>SHALL</bcp14> be identified by activity type 5.
         </t>
         <t keepWithNext="true">
@@ -1670,6 +1677,10 @@ $$st-data //= (0: safe-ete)
 ; SAI for the sender
 $$st-data //= (1: safe-sai / true)
         </sourcecode>
+        <t>
+Upon the first reception or transmission of ST step 1, the entity <bcp14>SHALL</bcp14> remove the referenced SA from its associated information bases.
+Any time after the first reception or transmission of ST step 1, either entity <bcp14>SHALL NOT</bcp14> refer to the removed SA from any other activities.
+        </t>
       </section>
       <section anchor="sec-act-cp">
         <name>CK Prekey (CP)</name>
@@ -1724,6 +1735,7 @@ $$cp-data //= (11: safe-ake)
         </sourcecode>
         <t>
 Upon the first reception of CP step 0, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and store the prekey information within the SA.
+Any time after the first reception of CP step 0, the entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cc"/> activities which refer to the new prekey by its KID.
         </t>
       </section>
       <section anchor="sec-act-cc">
@@ -1778,7 +1790,8 @@ $$cc-data //= (10: safe-kid)
 $$cc-data //= (11: safe-arn)
         </sourcecode>
         <t>
-Upon the first reception or transmission of SR step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+Upon the first reception or transmission of CC step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+Any time after the first reception or transmission of CC step 0, either entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cd"/> or <xref format="title" target="sec-act-cr"/> activities which refer to the new content key by its KID.
         </t>
       </section>
       <section anchor="sec-act-cd">
@@ -1825,7 +1838,10 @@ $$cd-data //= (1: safe-sai)
 $$cd-data //= (2: safe-kid)
         </sourcecode>
         <t>
-Upon the first reception or transmission of SR step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+Upon the first transmission of CD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that TX content key.
+Upon the first reception of CD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that RX content key.
+Any time after the first reception or transmission of CD step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
+After transmission of CD step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
         </t>
       </section>
       <section anchor="sec-act-cr">
@@ -1846,7 +1862,7 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 2: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
-          <name>CK Discard Data Items</name>
+          <name>CK Reject Data Items</name>
           <thead>
             <tr>
               <th>Label</th>
@@ -1872,7 +1888,10 @@ $$cr-data //= (1: safe-sai)
 $$cr-data //= (2: safe-kid)
         </sourcecode>
         <t>
-Upon the first reception or transmission of SR step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+Upon the first transmission of CR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that content key.
+Upon the first reception of CR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that content key.
+Any time after the first reception or transmission of CR step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
+After reception of CR step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
         </t>
       </section>
     </section>

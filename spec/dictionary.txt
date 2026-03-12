@@ -47,6 +47,7 @@ CKs
 CLA
 clset
 CNSA
+CNSS
 codepoints
 connectionless
 controllability

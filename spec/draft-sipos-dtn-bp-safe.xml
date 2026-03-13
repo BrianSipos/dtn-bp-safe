@@ -2172,13 +2172,13 @@ This section gives higher-level explanations and requirements for multiple activ
 The packetization form defined in <xref target="sec-layers"/> allows multiple messages to be combined into a single ADU but this behavior is limited by support for the receiving entity, as defined and communicated in the <xref format="title" target="sec-data-cas"/> data item.
         </t>
         <t>
-The CAS limit is a hard upper bound on in-progress activities between pairs of entities.
-An entity <bcp14>SHALL NOT</bcp14> initiate any activity which would cause the total number of in-progress activities to exceed the CAS limit received from a peer entity.
+The <em>pairwise CAS limit</em> is a hard upper bound on in-progress activities between pairs of entities, defined as the minimum of the local CAS limit and the CAS limit received from a peer entity.
+An entity <bcp14>SHALL NOT</bcp14> initiate any activity which would cause the total number of in-progress activities to exceed the pairwise CAS limit with a peer entity.
 An entity <bcp14>MAY</bcp14> ignore any messages from a peer which would cause the total number of in-progress activities to exceed its own CAS limit.
         </t>
         <t>
-Each entity needs to leave some margin within the CAS limit for its peer to initiate new activities.
-An entity <bcp14>SHALL NOT</bcp14> initiate any activity which would cause the total number of in-progress activities for which it is the initiator to exceed CAS limit received from a peer entity less some CAS margin.
+Each entity needs to leave some margin within the pairwise CAS limit for its peer to initiate new activities.
+An entity <bcp14>SHALL NOT</bcp14> initiate any activity which would cause the total number of in-progress activities for which it is the initiator to exceed the pairwise CAS limit with a peer entity less some <em>CAS margin</em>.
 An entity <bcp14>SHALL</bcp14> use a CAS margin of at least one.
 This always enables a peer to initiate one new activity.
 An entity <bcp14>SHOULD</bcp14> use a CAS margin that is some proportion to the CAS limit itself.

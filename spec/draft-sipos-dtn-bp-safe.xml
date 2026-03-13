@@ -1944,6 +1944,8 @@ safe-error = int16
         <t>
 This data item indicates how many concurrent (pipelined) SAFE activities the sender of the item supports.
 The minimum number of concurrent activities supported <bcp14>SHALL</bcp14> be 2.
+        </t>
+        <t>
 This is necessary in order to enable the processing of <xref format="title" target="sec-act-ci"/> containing this data item during the <xref format="title" target="sec-act-ia"/> messaging.
 The maximum number of concurrent activities supported <bcp14>SHALL</bcp14> be 1024.
 This is an arbitrary upper bound not expected to be encountered during normal operations.
@@ -2162,22 +2164,41 @@ Some examples of what KUS options can be defined by each Context binding are: a 
     <section anchor="sec-pat">
       <name>Activity Patterns</name>
       <t>
-The packetization form defined in <xref target="sec-layers"/> allows multiple messages to be combined into a single ADU but this behavior is limited by support for the receiving entity, as defined and communicated in the <xref format="title" target="sec-data-cas"/> data item.
+This section gives higher-level explanations and requirements for multiple activities between pairwise combinations of peers.
       </t>
-      <t>
+      <section>
+        <name>Concurrent Activities</name>
+        <t>
+The packetization form defined in <xref target="sec-layers"/> allows multiple messages to be combined into a single ADU but this behavior is limited by support for the receiving entity, as defined and communicated in the <xref format="title" target="sec-data-cas"/> data item.
+        </t>
+        <t>
+The CAS limit is a hard upper bound on in-progress activities between pairs of entities.
+An entity <bcp14>SHALL NOT</bcp14> initiate any activity which would cause the total number of in-progress activities to exceed the CAS limit received from a peer entity.
+An entity <bcp14>MAY</bcp14> ignore any messages from a peer which would cause the total number of in-progress activities to exceed its own CAS limit.
+        </t>
+        <t>
+Each entity needs to leave some margin within the CAS limit for its peer to initiate new activities.
+An entity <bcp14>SHALL NOT</bcp14> initiate any activity which would cause the total number of in-progress activities for which it is the initiator to exceed CAS limit received from a peer entity less some CAS margin.
+An entity <bcp14>SHALL</bcp14> use a CAS margin of at least one.
+This always enables a peer to initiate one new activity.
+An entity <bcp14>SHOULD</bcp14> use a CAS margin that is some proportion to the CAS limit itself.
+An entity <bcp14>SHOULD</bcp14> allow a peer to initiate an activity which would exceed the local CAS margin.
+This allows entities to choose different CAS margin for their own reasons without negotiating.
+        </t>
+        <t>
 Two examples of how this parameter affects activity sequencing is shown in <xref target="fig-safe-pipeline-large-cas"/> for a large CAS limit and <xref target="fig-safe-pipeline-small-cas"/> for a constraining limit of two.
 Note that when constrained, some activities can only begin with specific odd PDU numbers (from IA initiator) or even numbers (from the IA responder) so there are necessarily gaps between activities so less efficient use of the network.
-      </t>
-      <t>The first example performs the following sequence of activities, using up to 7 concurrent activities:</t>
-      <ol>
-        <li>IA to authenticate each entity.</li>
-        <li>CI to exchange capabilities of each entity before SAs are established.</li>
-        <li>One secondary SA initiated by Entity A (in PDU #2), with two non-FS CKs created by Entity A (in PDU #4) and two by Entity B (in PDU #5).</li>
-        <li>Two secondary SAs initiated by Entity B (in PDU #3), each with one non-FS CK created by Entity B (in PDU #5) and one by Entity A (in PDU #6).</li>
-      </ol>
-      <figure anchor="fig-safe-pipeline-large-cas">
-        <name>Pipelining with large CAS limit</name>
-        <artwork align="left" type="ascii-art"><![CDATA[
+        </t>
+        <t>The first example performs the following sequence of activities, using up to 7 concurrent activities:</t>
+        <ol>
+          <li>IA to authenticate each entity.</li>
+          <li>CI to exchange capabilities of each entity before SAs are established.</li>
+          <li>One secondary SA initiated by Entity A (in PDU #2), with two non-FS CKs created by Entity A (in PDU #4) and two by Entity B (in PDU #5).</li>
+          <li>Two secondary SAs initiated by Entity B (in PDU #3), each with one non-FS CK created by Entity B (in PDU #5) and one by Entity A (in PDU #6).</li>
+        </ol>
+        <figure anchor="fig-safe-pipeline-large-cas">
+          <name>Pipelining with large CAS limit</name>
+          <artwork align="left" type="ascii-art"><![CDATA[
 PDU #1    #2    #3    #4    #5    #6    #7
      |     |     |     |     |     |     |
  (IA 0 --- 1 --- 2 --- 3)    |     |     |
@@ -2194,17 +2215,17 @@ PDU #1    #2    #3    #4    #5    #6    #7
 
           =----- time ----->
 ]]></artwork>
-      </figure>
-      <t>The second example performs the same sequence, limited to 3 concurrent activities (no more than 2 initiated by each side):</t>
-      <ol>
-        <li>IA to authenticate each entity.</li>
-        <li>CI to exchange capabilities of each entity before SAs are established.</li>
-        <li>One secondary SA initiated by Entity A (in PDU #2), with two CKs created by Entity A (in PDU #8) and two by Entity B (in PDU #5 and #7).</li>
-        <li>Two secondary SAs initiated by Entity B (in PDU #5), each with one CK created by Entity B (in PDU #9) and one by Entity A (in PDU #10).</li>
-      </ol>
-      <figure anchor="fig-safe-pipeline-small-cas">
-        <name>Pipelining with small CAS limit</name>
-        <artwork align="left" type="ascii-art"><![CDATA[
+        </figure>
+        <t>The second example performs the same sequence, limited to 3 concurrent activities (no more than 2 initiated by each side):</t>
+        <ol>
+          <li>IA to authenticate each entity.</li>
+          <li>CI to exchange capabilities of each entity before SAs are established.</li>
+          <li>One secondary SA initiated by Entity A (in PDU #2), with two CKs created by Entity A (in PDU #8) and two by Entity B (in PDU #5 and #7).</li>
+          <li>Two secondary SAs initiated by Entity B (in PDU #5), each with one CK created by Entity B (in PDU #9) and one by Entity A (in PDU #10).</li>
+        </ol>
+        <figure anchor="fig-safe-pipeline-small-cas">
+          <name>Pipelining with small CAS limit</name>
+          <artwork align="left" type="ascii-art"><![CDATA[
 PDU #1    #2    #3    #4    #5    #6    #7    #8    #9    #10   #11
      |     |     |     |     |     |     |     |     |     |     |
  (IA 0 --- 1 --- 2 --- 3)(SC 0 --- 1 --- 2)(CC 0 --- 1)(CC 0 --- 1)
@@ -2213,26 +2234,30 @@ PDU #1    #2    #3    #4    #5    #6    #7    #8    #9    #10   #11
 
           =----- time ----->
 ]]></artwork>
-      </figure>
-      <t>
+        </figure>
+      </section>
+      <section>
+        <name>Activity Ordering</name>
+        <t>
 Regardless of how activities are aggregated into specific ADUs, the following requirements apply to ordering of activities related to a single primary SA.
-      </t>
-      <t>
+These build upon the per-activity constraints defined in <xref target="sec-act"/> to define a required or preferred order of activities, specifically during primary SA establishment.
+        </t>
+        <t>
 When no primary SA exists between two SAFE application endpoints, the first messaging between those applications <bcp14>SHALL</bcp14> be <xref format="title" target="sec-act-ia"/> used to progress the activity state and establish a primary SA.
 After a primary SA exists, either side of the SA <bcp14>MAY</bcp14> choose to initialize a new primary SA and re-authenticate with its peer.
-      </t>
-      <t>
+        </t>
+        <t>
 Only after the first step of the IA activity has been received, the responder for the IA activity <bcp14>SHALL</bcp14> begin a <xref format="title" target="sec-act-ci"/> activity.
 This CI activity <bcp14>MAY</bcp14> begin immediately upon sending of the second IA step, or <bcp14>MAY</bcp14> wait until after the IA activity has completed and a primary SA is established.
-      </t>
-      <t>
+        </t>
+        <t>
 Only after the first step of the CI activity has been received, the initiator for the IA activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-sc"/> activities.
 Only after the second step of the CI activity has been received, the responder for the IA activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-sc"/> activities.
 The number of concurrent SC activities allowed to be started at each step is limited by the CAS limit for the receiving peer.
-      </t>
-      <figure>
-        <name>Notional States of a Primary SA</name>
-        <artwork align="center" type="ascii-art"><![CDATA[
+        </t>
+        <figure>
+          <name>Notional States of a Primary SA</name>
+          <artwork align="center" type="ascii-art"><![CDATA[
     +-----------+
     |   Start   |
     +-----+-----+
@@ -2261,7 +2286,8 @@ ST step 1 |
     |  Removed  |
     +-----------+
 ]]></artwork>
-      </figure>
+        </figure>
+      </section>
     </section>
     <section anchor="sec-deriv">
       <name>Shared Secret Derivations</name>

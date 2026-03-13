@@ -2298,9 +2298,9 @@ PRK_Exporter
  |   | |   +--------------->(EXP)               | |
  |   | |   |                  |                 | |
  |   | |   |[no PK]        SALT_CK              | |
- |   | |   |                  |                 | |
- |   | |   |                  v                 | |
- .   | |   |  (KEM)-AKM_CK->(EXT)               | |
+ |   | |   |       (PSS)      |                 | |
+ |   | |   |         |        v                 | |
+ .   | |   |       AKM_CK-->(EXT)               | |
  .   | |   |                  |                 | |
  .   | |   |               PRK_CK   IDX,KID,ARN | |
      | |   |                  |     |||         | |
@@ -2336,8 +2336,8 @@ SAFE_EXP(PRK, context, length)
         </sourcecode>
       </figure>
       <t>
-In this document the notation "|" is used to indicate the concatenation of deterministically encoded CBOR items as a CBOR sequence without byte string wrapping.
-So in the definition of expand function above, the length is encoded and concatenated to the context sequence and used as opaque bytes by the EDHOC function.
+In this document the notation "E()" is used to indicate the deterministically encoded CBOR and the notation "|" is used to indicate the concatenation of encoded items as a CBOR sequence without byte string wrapping.
+So in the definition of expand function above, the length is encoded and concatenated to the context sequence, which is treated as opaque input bytes to the expand function.
 This is not a different mechanism than the EDHOC "info" rule sequence, just a different notation in pseudocode. 
       </t>
       <section anchor="sec-deriv-prk_sa">
@@ -2368,6 +2368,17 @@ PRK_SA = EDHOC_Exporter(TBA4, E(SAI_i) | E(SAI_r), hash_length)
           </sourcecode>
         </figure>
       </section>
+      <section anchor="sec-deriv-akm_ck">
+        <name>Prekey Shared Secret</name>
+        <t>
+The prekey shared secret (PSS) process is used to produce additional key material (AKM) data to enable forward secrecy of derived values.
+The AKM is not assumed to be uniformly random, so it needs to use a KDF extraction function (with appropriate salt) to derive any PRK values.
+        </t>
+        <t>
+When the prekey is an ECDH derivation key, the <tt>AKM_CK</tt> is the secret <tt>G_XY</tt> from the ECDH process.
+When the prekey is a KEM decapsulation key, the <tt>AKM_CK</tt> is the secret <tt>K</tt> from the KEM decapsulation process.
+        </t>
+      </section>
       <section anchor="sec-deriv-prk_ck">
         <name>Content Key PRK</name>
         <t>
@@ -2378,8 +2389,20 @@ Either the CK Create activity references an associated Prekey known to the respo
 When no prekey is referenced during SA creation, the <tt>PRK_CK</tt> used is the associated <tt>PRK_SA</tt> value of the parent SA.
         </t>
         <t>
-When a prekey is referenced during SA creation, the <tt>PRK_CK</tt> is extracted based on the prekey and the <tt>PRK_SA</tt> value as shown in <xref target="fig-deriv-prk_ck"/>.
+When a prekey is referenced during SA creation, the <tt>PRK_CK</tt> is extracted based on a chosen prekey as shown in <xref target="fig-deriv-prk_ck"/>, where the named parameters are:
         </t>
+        <dl>
+          <dt><tt>PRK_SA</tt>:</dt>
+          <dd>The parent SA PRK value.</dd>
+          <dt><tt>KID_CK</tt>:</dt>
+          <dd>The KID of the to-be-created content key, unique within the parent SA key store, taken from a <xref format="title" target="sec-data-kid"/> from the initiator.</dd>
+          <dt><tt>KID_PK</tt>:</dt>
+          <dd>The KID of the referenced prekey, unique within the parent SA key store, taken from a <xref format="title" target="sec-data-kid"/> from the initiator.</dd>
+          <dt><tt>hash_length</tt>:</dt>
+          <dd>The length of output size of the Hash Algorithm of the Primary SA.</dd>
+          <dt><tt>AKM_CK</tt>:</dt>
+          <dd>The prekey shared secret, as defined in <xref target="sec-deriv-akm_ck"/></dd>
+        </dl>
         <figure anchor="fig-deriv-prk_ck">
           <name>Content Key PRK pseudocode</name>
           <sourcecode>
@@ -2387,10 +2410,6 @@ SALT_CK = SAFE_EXP(PRK_SA, E(KID_CK) | E(KID_PK), hash_length)
 PRK_CK = SAFE_EXT(SALT_CK, AKM_CK)
           </sourcecode>
         </figure>
-        <t>
-When the prekey is an ECDH derivation key, the <tt>AKM_CK</tt> is the derived shared secret <tt>G_XY</tt>.
-When the prekey is a KEM decapsulation key, the <tt>AKM_CK</tt> is the decapsulated shared secret <tt>K</tt>.
-        </t>
       </section>
       <section anchor="sec-deriv-psa-keys">
         <name>Primary SA Content Keys</name>

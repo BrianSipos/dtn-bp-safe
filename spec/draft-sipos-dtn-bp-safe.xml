@@ -2373,6 +2373,7 @@ PRK_SA = EDHOC_Exporter(TBA4, E(SAI_i) | E(SAI_r), hash_length)
         <t>
 The prekey shared secret (PSS) process is used to produce additional key material (AKM) data to enable forward secrecy of derived values.
 The AKM is not assumed to be uniformly random, so it needs to use a KDF extraction function (with appropriate salt) to derive any PRK values.
+This is the exact same strategy and mechanism used by EDHOC itself for static DH authentication in <xref section="4.1.1" target="RFC9528"/>.
         </t>
         <t>
 When the prekey is an ECDH derivation key, the <tt>AKM_CK</tt> is the secret <tt>G_XY</tt> from the ECDH process.

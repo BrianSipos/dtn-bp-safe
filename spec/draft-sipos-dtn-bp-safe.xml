@@ -2166,7 +2166,7 @@ Some examples of what KUS options can be defined by each Context binding are: a 
       <t>
 This section gives higher-level explanations and requirements for multiple activities between pairwise combinations of peers.
       </t>
-      <section>
+      <section anchor="sec-pat-concurrent">
         <name>Concurrent Activities</name>
         <t>
 The packetization form defined in <xref target="sec-layers"/> allows multiple messages to be combined into a single ADU but this behavior is limited by support for the receiving entity, as defined and communicated in the <xref format="title" target="sec-data-cas"/> data item.
@@ -2236,8 +2236,8 @@ PDU #1    #2    #3    #4    #5    #6    #7    #8    #9    #10   #11
 ]]></artwork>
         </figure>
       </section>
-      <section>
-        <name>Activity Ordering</name>
+      <section anchor="sec-pat-establish">
+        <name>Establishment Ordering</name>
         <t>
 Regardless of how activities are aggregated into specific ADUs, the following requirements apply to ordering of activities related to a single primary SA.
 These build upon the per-activity constraints defined in <xref target="sec-act"/> to define a required or preferred order of activities, specifically during primary SA establishment.
@@ -2287,6 +2287,27 @@ ST step 1 |
     +-----------+
 ]]></artwork>
         </figure>
+      </section>
+      <section anchor="sec-pat-ck-upkeep">
+        <name>Content Key Upkeep</name>
+        <t>
+Initiating or responding to the creation of a new SA establishes an obligation by each entity to upkeep content keys in that SA.
+There are two extremes of strategy for keeping content keys replenished in each direction within an SA, described below.
+Each entity is in control of its own TX content keys and corresponding RX content keys of its peer, and is free to choose a strategy to do so without negotiation.
+Future extensions to SAFE can define new CI data items and SC data items that allow negotiating such behavior between peers.
+        </t>
+        <dl>
+          <dt>Reactive Keying:</dt>
+          <dd>This strategy is to ensure that one TX content key has a validity time including the current wall-clock time. When that validity time is about to expire perform a CC activity to create a new one. This strategy uses fewer key store entries but requires a just-in-time interactivity to create new keys as needed.</dd>
+          <dt>Pre-planned Keying:</dt>
+          <dd>This strategy is to establish a backlog of current and future TX content keys, either out to a specific horizon of time or a specific depth of number. As the current keys expire, the backlog is added to to maintain the desired horizon or depth. This strategy avoids just-in-time behavior but requires more key store size.</dd>
+        </dl>
+      </section>
+      <section anchor="sec-pat-pk-upkeep">
+        <name>Prekey Upkeep</name>
+        <t>
+Similar to the discussion in <xref target="sec-pat-ck-upkeep"/> entities which choose to use forward secrecy on some (or all) of their content keys <cref>TBD</cref>
+        </t>
       </section>
     </section>
     <section anchor="sec-deriv">

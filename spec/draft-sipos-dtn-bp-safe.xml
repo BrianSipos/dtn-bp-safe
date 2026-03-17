@@ -60,7 +60,7 @@ But without any additional scoping added to the derived keys (<em>e.g.</em>, val
           </t>
           <t>
 This technique alone also provides confidentiality of the derived symmetric keys but does not provide any authentication of the peer entity (via some identity binding to the associated private key).
-It also does not allow for forward secrecy (FS) because the original asymmetric keys need to be long-lived enough to handle all communications between the entities.
+It also does not allow for forward secrecy (FS) because the original asymmetric keys need to be long-lived enough to handle all communications between the entities (<em>i.e.</em>, considered "static" keys).
           </t>
         </dd>
       </dl>
@@ -127,12 +127,12 @@ Based on terminology from <xref section="3.1" target="RFC9171"/>, the four data 
 For simplicity that diagram shows a situation where there is reachability between the nodes in one direction, but typically reachability between nodes would be in both directions (via similar or dissimilar convergence layer types and/or hop counts).
         </t>
         <t>
-Two of the interaction points are with application(s) registered as endpoints in the BPA (transmit and deliver) and two are with underlying convergence layer(s) used to transport bundles between BPAs (forward and receive) for each hop.
+Two of the interaction points are with application(s) registered as endpoints in the BPA (<em>transmit</em> and <em>deliver</em>) and two are with underlying convergence layer adapter(s) used to transport bundles between BPAs (<em>forward</em> and <em>receive</em>) for each hop.
 Within a BPA there is logic about how and when to deliver, forward, retain, delete, discard, or some combination of those actions which are defined in <xref section="5" target="RFC9171"/>.
 This logic is indicated in later diagrams by the "(Decide)" label inside a BPA block.
         </t>
         <figure anchor="fig-bpa-points">
-          <name>BP Agent data plane interaction points</name>
+          <name>BP Agent data plane interaction points (showing two nodes)</name>
           <artwork align="center" type="ascii-art"><![CDATA[
       +---------------+                  +---------------+
       |   Registered  |                  |   Registered  |
@@ -148,6 +148,11 @@ Transmit|           |Deliver       Transmit|           |Deliver
    +----------------+----+            +----------------+----+
         ^           |                      ^           |
  Receive|           |Forward        Receive|           |Forward
+        |           v                      |           v
+      +-+-------------+                  +-+-------------+
+      | CL Adapter(s) |                  | CL Adapter(s) |
+      +---------------+                  +-------------+-+
+        ^           |                      ^           |
         |           v                      |           v
 ~---------+       +-----------~  ~---------+-+       +--------~
           |       |     Forwarding Hop(s)    |       |         
@@ -226,8 +231,9 @@ Transmit|                                          |Deliver
 ]]></artwork>
           </figure>
           <t>
-The purpose of this mode is to supplement security mechanisms (if any) provided by the forwarding convergence layer adapter (CLA).
+The purpose of this mode is to supplement security mechanisms (if any) provided by the forwarding convergence layers between the two nodes.
 This allows the receiving node to authenticate data from the previous node during reception, by transitively linking the one-hop security back to the mutual authentication and proof-of-possession from the <xref format="title" target="sec-act-ia"/> activity.
+A side effect of using SAFE in this mode, as a supplement to CL security, is that it can normalize the secuirty capability between the two nodes because it operates above and independently from whichever CL types are used between them (even if that CL type or its properties change over time).
           </t>
         </section>
       </section>

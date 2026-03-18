@@ -177,6 +177,7 @@ PRF
 prk
 PRK
 PRKs
+PSA
 PSAs
 pseudocode
 Pseudocode

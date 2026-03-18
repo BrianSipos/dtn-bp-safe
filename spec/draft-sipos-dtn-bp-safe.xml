@@ -233,7 +233,7 @@ Transmit|                                          |Deliver
           <t>
 The purpose of this mode is to supplement security mechanisms (if any) provided by the forwarding convergence layers between the two nodes.
 This allows the receiving node to authenticate data from the previous node during reception, by transitively linking the one-hop security back to the mutual authentication and proof-of-possession from the <xref format="title" target="sec-act-ia"/> activity.
-A side effect of using SAFE in this mode, as a supplement to CL security, is that it can normalize the secuirty capability between the two nodes because it operates above and independently from whichever CL types are used between them (even if that CL type or its properties change over time).
+A side effect of using SAFE in this mode, as a supplement to CL security, is that it can normalize the security capability between the two nodes because it operates above and independently from whichever CL types are used between them (even if that CL type or its properties change over time).
           </t>
         </section>
       </section>
@@ -2197,10 +2197,10 @@ Note that when constrained, some activities can only begin with specific odd PDU
         </t>
         <t>The first example performs the following sequence of activities, using up to 7 concurrent activities:</t>
         <ol>
-          <li>IA to authenticate each entity.</li>
-          <li>CI to exchange capabilities of each entity before SAs are established.</li>
-          <li>One secondary SA initiated by Entity A (in PDU #2), with two non-FS CKs created by Entity A (in PDU #4) and two by Entity B (in PDU #5).</li>
-          <li>Two secondary SAs initiated by Entity B (in PDU #3), each with one non-FS CK created by Entity B (in PDU #5) and one by Entity A (in PDU #6).</li>
+          <li>IA to authenticate, initiated by Entity A.</li>
+          <li>Early CI to exchange capabilities of each entity before SAs are established.</li>
+          <li>One secondary SA initiated by Entity B (in PDU #2), with two non-FS CKs created by Entity B (in PDU #4) and two by Entity A (in PDU #5).</li>
+          <li>Two secondary SAs initiated by Entity A (in PDU #3), each with one non-FS CK created by Entity A (in PDU #5) and one by Entity B (in PDU #6).</li>
         </ol>
         <figure anchor="fig-safe-pipeline-large-cas">
           <name>Pipelining with large CAS limit</name>
@@ -2224,10 +2224,10 @@ PDU #1    #2    #3    #4    #5    #6    #7
         </figure>
         <t>The second example performs the same sequence, limited to 3 concurrent activities (no more than 2 initiated by each side):</t>
         <ol>
-          <li>IA to authenticate each entity.</li>
+          <li>IA to authenticate, initiated by Entity A.</li>
           <li>CI to exchange capabilities of each entity before SAs are established.</li>
-          <li>One secondary SA initiated by Entity A (in PDU #2), with two CKs created by Entity A (in PDU #8) and two by Entity B (in PDU #5 and #7).</li>
-          <li>Two secondary SAs initiated by Entity B (in PDU #5), each with one CK created by Entity B (in PDU #9) and one by Entity A (in PDU #10).</li>
+          <li>One secondary SA initiated by Entity B (in PDU #2), with two CKs created by Entity B (in PDU #8) and two by Entity A (in PDU #5 and #7).</li>
+          <li>Two secondary SAs initiated by Entity A (in PDU #5), each with one CK created by Entity A (in PDU #9) and one by Entity B (in PDU #10).</li>
         </ol>
         <figure anchor="fig-safe-pipeline-small-cas">
           <name>Pipelining with small CAS limit</name>
@@ -2249,17 +2249,49 @@ Regardless of how activities are aggregated into specific ADUs, the following re
 These build upon the per-activity constraints defined in <xref target="sec-act"/> to define a required or preferred order of activities, specifically during primary SA establishment.
         </t>
         <t>
-When no primary SA exists between two SAFE application endpoints, the first messaging between those applications <bcp14>SHALL</bcp14> be <xref format="title" target="sec-act-ia"/> used to progress the activity state and establish a primary SA.
+When no primary SA exists between two SAFE application endpoints, the first messaging between those applications <bcp14>SHALL</bcp14> be <xref format="title" target="sec-act-ia"/> used to establish an initial private channel and mutually authenticate each peer.
 After a primary SA exists, either side of the SA <bcp14>MAY</bcp14> choose to initialize a new primary SA and re-authenticate with its peer.
         </t>
         <t>
-Only after the first step of the IA activity has been received, the responder for the IA activity <bcp14>SHALL</bcp14> begin a <xref format="title" target="sec-act-ci"/> activity.
-This CI activity <bcp14>MAY</bcp14> begin immediately upon sending of the second IA step, or <bcp14>MAY</bcp14> wait until after the IA activity has completed and a primary SA is established.
+Only after step 0 of the IA activity has been received, the responder for the IA activity <bcp14>SHALL</bcp14> begin a <xref format="title" target="sec-act-ci"/> activity.
+This CI activity <bcp14>MAY</bcp14> begin immediately upon sending of the IA step 1, before the IA initiator has been authenticated, or <bcp14>MAY</bcp14> wait until after the IA activity has completed step 2 and both peers are authenticated.
+It is an implementation matter to configure whether CI is allowed before mutual authentication.
         </t>
         <t>
-Only after the first step of the CI activity has been received, the initiator for the IA activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-sc"/> activities.
-Only after the second step of the CI activity has been received, the responder for the IA activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-sc"/> activities.
-The number of concurrent SC activities allowed to be started at each step is limited by the CAS limit for the receiving peer.
+After step 3 of the IA activity has been received, both peers have authenticated each other and established a primary SA configured with a single content key in each direction, each having indefinite validity time, and no content prekeys.
+Any additional content keys on the primary SA depend on CC activities by each peer to create those keys.
+        </t>
+        <figure anchor="fig-safe-pipeline-early-ci">
+          <name>Early CI initiation</name>
+          <artwork align="left" type="ascii-art"><![CDATA[
+PDU #1    #2    #3    #4    #5    #6
+     |     |     |     |     |     |
+ (IA 0 --- 1 --- 2 --- 3)    |     |
+     | (CI 0 --- 1 --- 2)    |     |
+     |     |     |     |     |     |
+                      PSA
+                      SSA
+
+          =----- time ----->
+]]></artwork>
+        </figure>
+        <figure anchor="fig-safe-pipeline-late-ci">
+          <name>Late CI initiation</name>
+          <artwork align="left" type="ascii-art"><![CDATA[
+PDU #1    #2    #3    #4    #5    #6
+     |     |     |     |     |     |
+ (IA 0 --- 1 --- 2 --- 3)    |     |
+     |     |     | (CI 0 --- 1 --- 2)
+     |     |     |     |     |     |
+                      PSA         SSA
+
+          =----- time ----->
+]]></artwork>
+        </figure>
+        <t>
+Only after step 0 of the CI activity has been received, the responder for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-cc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
+Only after step 1 of the CI activity has been received, the initiator for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-cc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
+The number of concurrent activities allowed to be started at each step is limited by the CAS limit for the receiving peer.
         </t>
         <figure>
           <name>Notional States of a Primary SA</name>
@@ -2281,8 +2313,8 @@ IA step 3 |   |        |
   |                |
   |   Established  <---.
   |                |   | CK activities
-  +-------+------+-+   | (optional)
-ST step 0 |      |     |
+  +-------+------+-+   | PK activities
+ST step 0 |      |     | (optional)
           |      '-----`
     +-----v-----+
     | Half Down |

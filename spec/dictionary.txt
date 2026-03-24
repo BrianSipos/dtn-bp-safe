@@ -117,6 +117,7 @@ IPv
 ir
 JHU
 KDF
+KDR
 keepalive
 Keepalive
 KEM

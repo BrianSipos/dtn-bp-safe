@@ -332,7 +332,7 @@ The initial confidential channel between a pair of SAFE entities is provided by 
 EDHOC also allows using external authorization data (EAD) items to confidentially transport SAFE messages during session establishment (see <xref target="sec-sa-use-safe-nopsa"/>), which avoids excess delay before negotiating secondary SAs.
       </t>
       <t>
-A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and initial symmetric keys for that primary SA.
+A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and an initial pair of content keys for that primary SA.
 The primary SA keys provide SAFE message confidentiality after the initial authentication EDHOC session (see <xref target="sec-sa-use-safe-withpsa"/>).
 After a primary SA is established, this protocol allows creating secondary SAs through a single 1.5 round-trip activity without re-authenticating.
 It also allows managing established SAs, both primary and secondary, including life-cycle management of subordinate symmetric keys (re-keying with optional forward secrecy and decommissioning), in order to bound key use over time and over volume of processed data.
@@ -809,6 +809,10 @@ An entity <bcp14>SHOULD</bcp14> remove any TX Content Key when the wall-clock ti
               <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the local entity.</td>
             </tr>
             <tr>
+              <td>Peer Accepted</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-cc"/> activity without error.</td>
+            </tr>
+            <tr>
               <td>Partial IV Counter</td>
               <td>
 An unsigned 64-bit integer counter used to construct Partial IV byte strings for outgoing SAFE PDUs as defined in <xref target="sec-sa-use-safe-withpsa"/>.
@@ -874,6 +878,10 @@ An entity <bcp14>SHOULD</bcp14> remove any RX Prekey when the wall-clock time ad
             <tr>
               <td>Validity Time Interval</td>
               <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the local entity.</td>
+            </tr>
+            <tr>
+              <td>Peer Accepted</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-cp"/> activity without error.</td>
             </tr>
             <tr>
               <td>Private Key</td>
@@ -1478,7 +1486,7 @@ Before that step has occurred the primary SA is still being negotiated and has n
         <section anchor="sec-act-ia-edhoc">
           <name>EDHOC Requirements</name>
           <t>
-After receiving the <tt>ID_CRED_x</tt> values from a peer, each SAFE entity <bcp14>SHALL</bcp14> <cref>TBD</cref>.
+After receiving the <tt>ID_CRED_x</tt> values from a peer, each SAFE entity <bcp14>SHALL</bcp14> validate the contained or referenced credential in its <xref target="sec-info-peers">participating peers</xref> information base for the associated bundle source.
           </t>
           <t>
 When the Message 2 payload is received by the initiator, both peers have established an EDHOC shared secret but only the responder has sent an identity to authenticate with the initiator.
@@ -1492,13 +1500,17 @@ When the Message 3 payload is received by the responder, both peers have authent
 This activity allows each entity to indicate its SAFE-related capabilities to its peer.
 The Capability Indication (CI) activity <bcp14>SHALL</bcp14> be identified by activity type 1.
         </t>
+        <t>
+If the receiver of CI step 0 or step 1 does not find its content acceptable it <bcp14>SHALL</bcp14> reply with an error indication, not create any associated primary SA, and abort the parent IA activity.
+If a CI step 1 or 2 contains an error indication, the receiver <bcp14>SHALL</bcp14> not create any associated primary SA, and abort the parent IA activity.
+        </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
         </t>
         <ul>
           <li>Step 0: The payload is a map containing data items as defined below. Each item expresses a capability of the initiator entity.</li>
           <li>Step 1: The payload is a map containing data items as defined below. Each item expresses a capability of the responder entity.</li>
-          <li>Step 2: No payload, message is acknowledgement.</li>
+          <li>Step 2: Either no payload, indicating pure acknowledgement, or a map containing a single error item.</li>
         </ul>
         <table align="center">
           <name>CI Data Items</name>
@@ -1510,16 +1522,36 @@ The sequence of steps and their data for this activity are the following:
           </thead>
           <tbody>
             <tr>
+              <td>0</td>
+              <td>Error indications per <xref target="sec-data-ete"/> for messages after step 0.</td>
+            </tr>
+            <tr>
               <td>1</td>
-              <td>A <xref format="title" target="sec-data-cas"/> limit</td>
+              <td>A <xref format="title" target="sec-data-cas"/> limit.</td>
             </tr>
             <tr>
               <td>2</td>
-              <td>An <xref format="title" target="sec-data-ess"/> list</td>
+              <td>An <xref format="title" target="sec-data-ess"/> list.</td>
             </tr>
             <tr>
               <td>3</td>
-              <td>A <xref format="title" target="sec-data-bcs"/> list</td>
+              <td>A <xref format="title" target="sec-data-bcs"/> list.</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content keys supported in the primary SA. This range <bcp14>SHALL</bcp14> have a lower limit greater than zero to indicate that there can always be at least one RX content key.</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content keys used in the primary SA. This range <bcp14>SHALL</bcp14> have a lower limit greater than zero to indicate that there will always be at least one TX content key.</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content prekeys used in the primary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be used by the sending entity.</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content prekeys supported in the primary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be allowed by the sending entity.</td>
             </tr>
           </tbody>
         </table>
@@ -1529,6 +1561,10 @@ ci-data = { * $$ci-data } .within data-map
 $$ci-data //= (1: concur-act-limit)
 $$ci-data //= (2: eid-scheme-list)
 $$ci-data //= (3: bpsec-ctxid-list)
+$$ci-data //= (4: key-depth-range)
+$$ci-data //= (5: key-depth-range)
+$$ci-data //= (6: key-depth-range)
+$$ci-data //= (7: key-depth-range)
         </sourcecode>
         <t>
 It is not until reception of a peer's CI information that later activities can be initiated with the expectation that they will succeed.
@@ -1989,6 +2025,21 @@ bpsec-ctxid-list = [+ bpsec-ctxid]
 bpsec-ctxid = -32768 .. 32767
 </sourcecode>
       </section>
+      <section anchor="sec-data-kdr">
+        <name>Key Depth Range (KDR)</name>
+        <t>
+This data item indicates a range of valid depth of a key store in the sending entity.
+The value is an array containing two items: a minimum valid depth as a <tt>uint</tt> and a maximum valid depth as a <tt>uint</tt>.
+The minimum depth <bcp14>SHALL</bcp14> be less than or equal to the maximum depth.
+Specific uses of this data item can further restrict the valid minimum or maximum.
+        </t>
+        <sourcecode type="cddl">
+key-depth-range = [
+  min: uint,
+  max: uint
+]
+</sourcecode>
+      </section>
       <section anchor="sec-data-sai">
         <name>Security Association Identifier (SAI)</name>
         <t>
@@ -2344,7 +2395,8 @@ Future extensions to SAFE can define new CI data items and SC data items that al
       <section anchor="sec-pat-pk-upkeep">
         <name>Prekey Upkeep</name>
         <t>
-Similar to the discussion in <xref target="sec-pat-ck-upkeep"/> entities which choose to use forward secrecy on some (or all) of their content keys <cref>TBD</cref>
+Similar to the discussion in <xref target="sec-pat-ck-upkeep"/> entities which agree to use forward secrecy on some (or all) of their RX content keys need to upkeep RX content prekeys in that SA.
+Part of that is generating private prekey material locally and the other part is sending public prekey material to the peer entity.
         </t>
       </section>
     </section>

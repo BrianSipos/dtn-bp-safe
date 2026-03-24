@@ -754,12 +754,20 @@ This is used to derive further values for content key material as defined in <xr
               </td>
             </tr>
             <tr>
+              <td>TX Content Key Depth Range:</td>
+              <td>The agreed range of valid size of the TX Content Key store for this SA, which is the intersection of the local and received range. New content keys will be generated as needed to stay within this range.</td>
+            </tr>
+            <tr>
               <td>TX Content Keys</td>
               <td>
 The primary SA has one or more content keys for outgoing PDUs to the Peer EID.
 Each content key has the information defined in <xref target="tab-info-sa-pri-txck"/> and is scoped within a single primary SA.
 The associated key material is derived from the shared secret created during <xref format="title" target="sec-act-ia"/> and <xref format="title" target="sec-act-cc"/> activities.
               </td>
+            </tr>
+            <tr>
+              <td>RX Content Key Depth Range:</td>
+              <td>The agreed range of valid size of the RX Content Key store for this SA, which is the intersection of the local and received range. New content keys will be accepted only if the size would stay within this range.</td>
             </tr>
             <tr>
               <td>RX Content Keys</td>
@@ -770,12 +778,20 @@ The associated key material is derived from the shared secret created during an 
               </td>
             </tr>
             <tr>
+              <td>RX Prekey Depth Range:</td>
+              <td>The agreed range of valid size of the RX Prekey store for this SA, which is the intersection of the local and received range. New prekeys will be generated as needed to stay within this range.</td>
+            </tr>
+            <tr>
               <td>RX Prekeys</td>
               <td>
 A set of one-time-use private asymmetric key material used to process received CK Creation activities.
 These private keys are generated locally and their associated public prekeys are communicated to the peer entity via CK Prekey activities.
 Each private prekey has the information defined in <xref target="tab-info-sa-pri-rxpre"/> and is scoped within a single primary SA.
               </td>
+            </tr>
+            <tr>
+              <td>TX Prekey Depth Range:</td>
+              <td>The agreed range of valid size of the TX Prekey store for this SA, which is the intersection of the local and received range. New prekeys will be accepted only if the size would stay within this range.</td>
             </tr>
             <tr>
               <td>TX Prekeys</td>

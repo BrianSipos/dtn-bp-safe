@@ -1537,20 +1537,21 @@ The sequence of steps and their data for this activity are the following:
               <td>3</td>
               <td>A <xref format="title" target="sec-data-bcs"/> list.</td>
             </tr>
+            <tr><td colspan="2">Options for subordinate key stores</td></tr>
             <tr>
-              <td>4</td>
+              <td>10</td>
               <td>A <xref format="title" target="sec-data-kdr"/> for RX content keys supported in the primary SA. This range <bcp14>SHALL</bcp14> have a lower limit greater than zero to indicate that there can always be at least one RX content key.</td>
             </tr>
             <tr>
-              <td>5</td>
+              <td>11</td>
               <td>A <xref format="title" target="sec-data-kdr"/> for TX content keys used in the primary SA. This range <bcp14>SHALL</bcp14> have a lower limit greater than zero to indicate that there will always be at least one TX content key.</td>
             </tr>
             <tr>
-              <td>6</td>
+              <td>12</td>
               <td>A <xref format="title" target="sec-data-kdr"/> for RX content prekeys used in the primary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be used by the sending entity.</td>
             </tr>
             <tr>
-              <td>7</td>
+              <td>13</td>
               <td>A <xref format="title" target="sec-data-kdr"/> for TX content prekeys supported in the primary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be allowed by the sending entity.</td>
             </tr>
           </tbody>
@@ -1561,10 +1562,11 @@ ci-data = { * $$ci-data } .within data-map
 $$ci-data //= (1: concur-act-limit)
 $$ci-data //= (2: eid-scheme-list)
 $$ci-data //= (3: bpsec-ctxid-list)
-$$ci-data //= (4: key-depth-range)
-$$ci-data //= (5: key-depth-range)
-$$ci-data //= (6: key-depth-range)
-$$ci-data //= (7: key-depth-range)
+
+$$ci-data //= (10: key-depth-range)
+$$ci-data //= (11: key-depth-range)
+$$ci-data //= (12: key-depth-range)
+$$ci-data //= (13: key-depth-range)
         </sourcecode>
         <t>
 It is not until reception of a peer's CI information that later activities can be initiated with the expectation that they will succeed.
@@ -1673,6 +1675,23 @@ But for more complex cases, the intersection needs to be represented as a logica
               <td>5</td>
               <td>A <xref format="title" target="sec-data-kus"/> for a specific BPSec context, which contains one or more set of key use options as defined in <xref target="sec-sa-use"/></td>
             </tr>
+            <tr><td colspan="2">Options for subordinate key stores</td></tr>
+            <tr>
+              <td>10</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content keys supported in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate that no RX content keys can be accepted and that associated traffic toward the CI sender cannot have security applied.</td>
+            </tr>
+            <tr>
+              <td>11</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content keys used in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate that no TX content keys will be created and associated traffic from the CI sender cannot have security applied.</td>
+            </tr>
+            <tr>
+              <td>12</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content prekeys used in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be used by the sending entity.</td>
+            </tr>
+            <tr>
+              <td>13</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content prekeys supported in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be allowed by the sending entity.</td>
+            </tr>
           </tbody>
         </table>
         <sourcecode type="cddl">
@@ -1691,7 +1710,13 @@ $$sc-data //= (7: safe-esx)
 $$sc-data //= (8: safe-nti)
 
 ; BPSec Context and its options for how to use the content keys
-$$sc-data //= (4: safe-kus)
+$$sc-data //= (4: safe-sos)
+$$sc-data //= (5: safe-kus)
+
+$$ci-data //= (10: key-depth-range)
+$$ci-data //= (11: key-depth-range)
+$$ci-data //= (12: key-depth-range)
+$$ci-data //= (13: key-depth-range)
         </sourcecode>
         <t>
 Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-prk_sa"/> with no initial content keys or prekeys.

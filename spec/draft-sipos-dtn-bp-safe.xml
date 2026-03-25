@@ -158,14 +158,14 @@ Transmit|           |Deliver       Transmit|           |Deliver
 This document considers two principal use cases to narrow the scope of discussion, each described in the following subsections.
 More complex use cases can be achieved by this protocol, either by more complex interaction with a BPSec entity or the use of techniques such as BIBE of <xref target="I-D.ietf-dtn-bibect"/> to perform secure tunneling between pairs of security gateway nodes.
         </t>
-        <section>
+        <section anchor="sec-intro-usecases-endtoend">
           <name>End-to-End Security</name>
           <t>
 The end-to-end use case is where the SAFE entities negotiate secondary SAs which match endpoints on the participating nodes themselves.
-This use case corresponds to the <tt>end-to-end</tt> mode of <xref format="title" target="sec-data-sms"/>.
+This use case corresponds to the <tt>end-to-end</tt> mode of <xref target="sec-data-sms"/>.
           </t>
           <t>
-For this mode the bundle flows and security processing will look like what is depicted in <xref target="fig-usecase-etoe"/>.
+For this case the bundle flows and security processing will look like what is depicted in <xref target="fig-usecase-etoe"/>.
 The negotiated security service is sourced immediately upon bundle creation (after the corresponding ADU is transmitted by the source endpoint), has a lifetime equal to the bundle itself, and is accepted immediately before bundle delivery (of the ADU to the destination endpoint).
           </t>
           <figure anchor="fig-usecase-etoe">
@@ -190,18 +190,23 @@ Transmit|                                              |Deliver
 ]]></artwork>
           </figure>
           <t>
-The purpose of this mode is to ensure that specific traffic has integrity or confidentiality protection for its entire lifetime, applied as close to the endpoints as possible.
+The purpose of the mode in this use case is to ensure that selected traffic has integrity or confidentiality protection for its entire lifetime, applied as close to the endpoints as possible.
 This protection also includes any possible storage at the source and destination nodes.
+For that reason, the selected traffic <bcp14>SHOULD</bcp14> include only bundles with source and destination endpoints on those nodes.
+          </t>
+          <t>
+Because the security operation here has the maximal lifetime, its target needs to be another block that is guaranteed to exist from bundle creation up to the point of delivery.
+Because of that, the target block (and any other covered blocks) for the end-to-end case <bcp14>SHALL</bcp14> to be one that also exists for the lifetime of the bundle.
           </t>
         </section>
-        <section>
-          <name>One-Hop Security</name>
+        <section anchor="sec-intro-usecases-onehop">
+          <name>One-Hop Transport Security</name>
           <t>
 The one-hop use case is where the SAFE entities negotiate secondary SAs which match arbitrary endpoints but apply to bundles traversing a single hop with a neighbor node.
-This use case corresponds to the <tt>one-hop</tt> mode of <xref format="title" target="sec-data-sms"/>.
+This use case corresponds to the <tt>transport</tt> mode of <xref target="sec-data-sms"/>.
           </t>
           <t>
-For this mode the bundle flows and security processing will look like what is depicted in <xref target="fig-usecase-onehop"/>.
+For this case the bundle flows and security processing will look like what is depicted in <xref target="fig-usecase-onehop"/>.
 The negotiated security service is sourced immediately before forwarding (specifically to the peer node of the SA), has a lifetime of just a single bundle hop, and is accepted immediately upon reception at that peer node.
           </t>
           <figure anchor="fig-usecase-onehop">
@@ -226,8 +231,36 @@ Transmit|                                          |Deliver
 ]]></artwork>
           </figure>
           <t>
-The purpose of this mode is to supplement security mechanisms (if any) provided by the forwarding convergence layer adapter (CLA).
+The purpose of the mode in this use case is to supplement security mechanisms (if any) provided by the forwarding convergence layer (CL) protocol stack.
 This allows the receiving node to authenticate data from the previous node during reception, by transitively linking the one-hop security back to the mutual authentication and proof-of-possession from the <xref format="title" target="sec-act-ia"/> activity.
+For that reason, the selected traffic <bcp14>SHOULD</bcp14> include all bundles between the participating nodes.
+          </t>
+          <t>
+Because the security operation here has a limited lifetime, its target could be any block in the bundle.
+However, the constraint of <xref section="3.2" target="RFC9172"/> requires that the combination of security service and target block be unique within the bundle.
+Because of that, the target block for the one-hop case <bcp14>SHOULD</bcp14> to be one that also has a one-hop lifetime such as a Previous Node block.
+          </t>
+        </section>
+        <section anchor="sec-intro-usecases-multihop">
+          <name>Multi-Hop Transport Security</name>
+          <t>
+The multi-hop use case is where the SAFE entities negotiate secondary SAs which match arbitrary endpoints but apply to bundles traversing a several hops between the participating nodes.
+This use case corresponds to the <tt>transport</tt> mode of <xref target="sec-data-sms"/>, just as the one-hop use case of <xref target="sec-intro-usecases-onehop"/>.
+          </t>
+          <t>
+For this case the bundle flows and security processing will look similar to that of <xref target="fig-usecase-onehop"/> except that there are more hops between the participating nodes.
+The negotiated security service is sourced immediately before forwarding (specifically to the peer node of the SA), has a lifetime of just a single bundle hop, and is accepted immediately upon reception at that peer node.
+          </t>
+          <t>
+Also similar to the one-hop case, there are more constraints and considerations for the target of the security operation.
+One consideration is the fact that BP topology or routing, outside the scope of this protocol, <bcp14>SHALL</bcp14> be configured to ensure that the selected traffic actually gets forwarded between the participating nodes.
+If the actual forwarding path passes through one of the nodes but not the other, the security operation will be sourced properly but never accepted and will serve no purpose.
+          </t>
+        </section>
+        <section anchor="sec-intro-usecases-tunnel">
+          <name>Tunnel Security</name>
+          <t>
+<cref>TBD a use case that configures BPSec as well as BIBE to require encapsulation of selected traffic between the participating nodes.</cref>
           </t>
         </section>
       </section>
@@ -2041,7 +2074,7 @@ This data item controls how the secondary SA is used in the BP data plane by the
 This data value <bcp14>SHALL</bcp14> be an integer limited to the inclusive range -32768 to 32767.
         </t>
         <t>
-Based on the discussion in <xref target="sec-intro-usecases"/> this document defines two modes: end-to-end (1) and one-hop (2).
+Based on the discussion in <xref target="sec-intro-usecases"/> this document defines two modes: end-to-end (1) and transport (2).
 The behavior of these modes is defined in <xref target="sec-sa-use-bpsec"/>.
 Future specifications can add additional mode code points with different behavior.
         </t>
@@ -2049,7 +2082,7 @@ Future specifications can add additional mode code points with different behavio
 safe-sms = secondary-sa-mode .within int16
 secondary-sa-mode = &amp;(
     end-to-end: 1,
-    one-hop: 2,
+    transport: 2,
 )
         </sourcecode>
       </section>
@@ -2647,7 +2680,7 @@ The SMS value determines at which of the BP Agent interaction points (see <xref 
 When the SMS value is end-to-end (1), the node <bcp14>SHALL</bcp14> apply the SA policy at bundle transmission (from endpoint application) as source and at bundle delivery (to endpoint application) as acceptor.
             </t>
             <t>
-When the SMS value is one-hop (2), the node <bcp14>SHALL</bcp14> apply the SA policy at bundle forwarding (to CLA) as source and at bundle reception (from CLA) as acceptor.
+When the SMS value is transport (2), the node <bcp14>SHALL</bcp14> apply the SA policy at bundle forwarding (to CLA) as source and at bundle reception (from CLA) as acceptor.
             </t>
           </li>
           <li>
@@ -3459,7 +3492,7 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             </tr>
             <tr>
               <td>2</td>
-              <td>one-hop</td>
+              <td>transport</td>
               <td>[This specification]</td>
             </tr>
             <tr>

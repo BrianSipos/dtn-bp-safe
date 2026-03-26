@@ -46,6 +46,7 @@ CKs
 CLA
 clset
 CNSA
+CNSS
 codepoints
 connectionless
 controllability
@@ -75,6 +76,7 @@ Deduplication
 Diffie
 dns
 DNS
+DSA
 DTLS
 dtn
 DTN
@@ -184,6 +186,7 @@ pseudocode
 Pseudocode
 pseudorandom
 PSK
+PSS
 queueing
 reachability
 rekey

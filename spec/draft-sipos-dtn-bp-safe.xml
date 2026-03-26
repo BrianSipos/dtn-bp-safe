@@ -1426,7 +1426,7 @@ The bundle creation timestamp (both DTN time and sequence number), defined in Ti
 This section defines the initial types of activity which make use of <xref target="sec-layers-msg">SAFE message</xref> sequencing to exchange data.
       </t>
       <t>
-Each activity type definition <bcp14>SHALL</bcp14> include how many steps comprise a single sequence of messages and what are the required and optional data payload of each step.
+Each activity type definition <bcp14>SHALL</bcp14> include how many steps comprise a single sequence of messages and what the required and optional data payloads are for each step.
       </t>
       <section anchor="sec-act-ia">
         <name>Initial Authentication (IA)</name>

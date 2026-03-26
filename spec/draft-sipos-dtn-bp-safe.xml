@@ -60,7 +60,7 @@ But without any additional scoping added to the derived keys (<em>e.g.</em>, val
           </t>
           <t>
 This technique alone also provides confidentiality of the derived symmetric keys but does not provide any authentication of the peer entity (via some identity binding to the associated private key).
-It also does not allow for forward secrecy (FS) because the original asymmetric keys need to be long-lived enough to handle all communications between the entities (<em>i.e.</em>, considered "static" keys).
+It also does not allow for forward secrecy (FS) or post-compromise security (PCS) because the original asymmetric keys need to be long-lived enough to handle all communications between the entities (<em>i.e.</em>, considered "static" keys).
           </t>
         </dd>
       </dl>
@@ -357,18 +357,31 @@ A filter for BP traffic based on specific fields of the bundle primary block or 
     <section anchor="sec-prococol">
       <name>General Protocol Description</name>
       <t>
-The service of this protocol is the establishment and management of one or more secondary security association (SA) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific data plane traffic as described in <xref target="sec-protocol-bpsec"/>.
+The service of this protocol is the establishment and management of one or more secondary security association (SA) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific non-SAFE data plane traffic as described in <xref target="sec-protocol-bpsec"/>.
 To avoid coupling each SAFE entity with any BPSec entity on the same node, SAFE PDUs use application-provided security instead of relying on BPSec.
       </t>
       <t>
-The initial confidential channel between a pair of SAFE entities is provided by an Ephemeral Diffie-Hellman Over COSE (EDHOC) session <xref target="RFC9528"/> and <xref target="sec-protocol-edhoc"/>, which includes forward secrecy, mutual authentication, and proof-of-possession.
+The rough order of protocol operation is as follows:
+      </t>
+      <ol>
+        <li>Establish a confidential channel between a pair of SAFE entities using ephemeral keys.</li>
+        <li>Perform mutual authentication based on a trusted credential for each entity.</li>
+        <li>Exchange the capabilities and constraints from each entity.</li>
+        <li>Negotiate a primary SA for SAFE PDUs, with initial pair of content keys for SAFE PDUs.</li>
+        <li>Negotiate some number of secondary SAs for specific BPSec operations on specific traffic.</li>
+        <li>Unilaterally upkeep content keys for primary and secondary SAs over time, with optional FS/PCS for each new key.</li>
+        <li>Create or teardown secondary SAs as BPSec needs change over time.</li>
+        <li>Re-authenticate or teardown the primary SA as determined by policy.</li>
+      </ol>
+      <t>
+The initial confidential channel between SAFE entities is provided by an Ephemeral Diffie-Hellman Over COSE (EDHOC) session <xref target="RFC9528"/> and <xref target="sec-protocol-edhoc"/>, which includes forward secrecy, mutual authentication, and proof-of-possession.
 EDHOC also allows using external authorization data (EAD) items to confidentially transport SAFE messages during session establishment (see <xref target="sec-sa-use-safe-nopsa"/>), which avoids excess delay before negotiating secondary SAs.
       </t>
       <t>
 A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and an initial pair of content keys for that primary SA.
 The primary SA keys provide SAFE message confidentiality after the initial authentication EDHOC session (see <xref target="sec-sa-use-safe-withpsa"/>).
 After a primary SA is established, this protocol allows creating secondary SAs through a single 1.5 round-trip activity without re-authenticating.
-It also allows managing established SAs, both primary and secondary, including life-cycle management of subordinate symmetric keys (re-keying with optional forward secrecy and decommissioning), in order to bound key use over time and over volume of processed data.
+It also allows managing established SAs, both primary and secondary, including life-cycle management of subordinate symmetric keys (see <xref target="sec-prococol-ck-lifecycle"/>), in order to bound key use over time and over volume of processed data.
       </t>
       <figure anchor="fig-sa-hierarchy">
         <name>Relationships between SAs and their key material</name>
@@ -411,7 +424,7 @@ Some SAFE activities involve negotiating of a shared state between an initiator 
 Many activities are unilateral, meaning they consist of a single data-bearing step from the initiator followed by a single responder acknowledgement.
 Having activities be unilateral makes the overall protocol more delay-tolerant.
       </t>
-      <section>
+      <section anchor="sec-prococol-ck-lifecycle">
         <name>Content Key Lifecycle Management</name>
         <t>
 Within each SA, both primary and secondary, there are some number of content keys (CKs) available for use in the data plane.
@@ -490,7 +503,7 @@ All of those CKs can be created immediately after SC creation with future validi
         <t>
 This protocol embeds EDHOC as the messaging structure and behavior of the <xref format="title" target="sec-act-ia"/> activity type.
 Because the IA activity is the very beginning of a conversation between two SAFE entities, the packetization behavior during the IA activity is a special case containing a single EDHOC message in each PDU.
-This also means that during the IA activity EDHOC is responsible for confidentiality of SAFE data as EAD items.
+This also means that during the IA activity EDHOC is responsible for confidentiality of SAFE data as critical EAD items.
 After the IA has finished and a primary SA is established, confidentiality is provided by an application-layer use of COSE encryption (see <xref target="sec-layers-agg"/>) using EDHOC session parameters.
         </t>
       </section>
@@ -1477,7 +1490,7 @@ safe-pdu-edhoc //= (
     edhoc_234 // error
 )
 ; Equivalent to (message_2 // message_3 // message_4) from RFC 9528
-; Encoded SAFE messages can be present as EAD items
+; Encoded SAFE messages can be present as critical EAD items
 edhoc_234 = bstr
 
 safe-pdu-confidential //= (
@@ -1561,8 +1574,9 @@ There is no restriction on any intermediate security handling of SAFE PDUs betwe
         <t>
 The CDDL corresponding to this activity type are the first two variations of <tt>safe-pdu-seq</tt> from <xref target="sec-layers-pdu"/>.
 Additionally, the <em>EAD</em> payload of the EDHOC messages are extended to be able to confidentially carry encoded SAFE messages during the IA activity.
-Any number of EAD items of label <cref>TBA5</cref> and value matching the <tt>safe-msg-bstr</tt> rule (defined in <xref target="sec-layers-msg"/>) <bcp14>MAY</bcp14> be present in EDHOC lists <tt>EAD_2</tt>, <tt>EAD_3</tt>, and <tt>EAD_4</tt>.
+Any number of EAD items of label -<cref>TBA5</cref> and value matching the <tt>safe-msg-bstr</tt> rule (defined in <xref target="sec-layers-msg"/>) <bcp14>MAY</bcp14> be present in EDHOC lists <tt>EAD_2</tt>, <tt>EAD_3</tt>, and <tt>EAD_4</tt>.
 EAD items of label <cref>TBA5</cref> <bcp14>SHALL NOT</bcp14> be present in <tt>EAD_1</tt>, which is transported as plaintext.
+When present, all SAFE EAD items <bcp14>SHALL</bcp14> use the negative label to indicate that the item is critical and cannot be ignored by the receiver.
         </t>
         <t>
 Upon the first reception or transmission of IA step 2 (<em>i.e.</em>, EDHOC <tt>message_3</tt>), the entity <bcp14>SHALL</bcp14> create a primary SA based on the data derived in <xref target="sec-deriv-prk_sa"/>.

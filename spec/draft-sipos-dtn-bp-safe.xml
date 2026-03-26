@@ -60,7 +60,7 @@ But without any additional scoping added to the derived keys (<em>e.g.</em>, val
           </t>
           <t>
 This technique alone also provides confidentiality of the derived symmetric keys but does not provide any authentication of the peer entity (via some identity binding to the associated private key).
-It also does not allow for forward secrecy (FS) because the original asymmetric keys need to be long-lived enough to handle all communications between the entities.
+It also does not allow for forward secrecy (FS) because the original asymmetric keys need to be long-lived enough to handle all communications between the entities (<em>i.e.</em>, considered "static" keys).
           </t>
         </dd>
       </dl>
@@ -127,12 +127,12 @@ Based on terminology from <xref section="3.1" target="RFC9171"/>, the four data 
 For simplicity that diagram shows a situation where there is reachability between the nodes in one direction, but typically reachability between nodes would be in both directions (via similar or dissimilar convergence layer types and/or hop counts).
         </t>
         <t>
-Two of the interaction points are with application(s) registered as endpoints in the BPA (transmit and deliver) and two are with underlying convergence layer(s) used to transport bundles between BPAs (forward and receive) for each hop.
+Two of the interaction points are with application(s) registered as endpoints in the BPA (<em>transmit</em> and <em>deliver</em>) and two are with underlying convergence layer adapter(s) used to transport bundles between BPAs (<em>forward</em> and <em>receive</em>) for each hop.
 Within a BPA there is logic about how and when to deliver, forward, retain, delete, discard, or some combination of those actions which are defined in <xref section="5" target="RFC9171"/>.
 This logic is indicated in later diagrams by the "(Decide)" label inside a BPA block.
         </t>
         <figure anchor="fig-bpa-points">
-          <name>BP Agent data plane interaction points</name>
+          <name>BP Agent data plane interaction points (showing two nodes)</name>
           <artwork align="center" type="ascii-art"><![CDATA[
       +---------------+                  +---------------+
       |   Registered  |                  |   Registered  |
@@ -148,6 +148,11 @@ Transmit|           |Deliver       Transmit|           |Deliver
    +----------------+----+            +----------------+----+
         ^           |                      ^           |
  Receive|           |Forward        Receive|           |Forward
+        |           v                      |           v
+      +-+-------------+                  +-+-------------+
+      | CL Adapter(s) |                  | CL Adapter(s) |
+      +---------------+                  +-------------+-+
+        ^           |                      ^           |
         |           v                      |           v
 ~---------+       +-----------~  ~---------+-+       +--------~
           |       |     Forwarding Hop(s)    |       |         
@@ -226,8 +231,9 @@ Transmit|                                          |Deliver
 ]]></artwork>
           </figure>
           <t>
-The purpose of this mode is to supplement security mechanisms (if any) provided by the forwarding convergence layer adapter (CLA).
+The purpose of this mode is to supplement security mechanisms (if any) provided by the forwarding convergence layers between the two nodes.
 This allows the receiving node to authenticate data from the previous node during reception, by transitively linking the one-hop security back to the mutual authentication and proof-of-possession from the <xref format="title" target="sec-act-ia"/> activity.
+A side effect of using SAFE in this mode, as a supplement to CL security, is that it can normalize the security capability between the two nodes because it operates above and independently from whichever CL types are used between them (even if that CL type or its properties change over time).
           </t>
         </section>
       </section>
@@ -326,7 +332,7 @@ The initial confidential channel between a pair of SAFE entities is provided by 
 EDHOC also allows using external authorization data (EAD) items to confidentially transport SAFE messages during session establishment (see <xref target="sec-sa-use-safe-nopsa"/>), which avoids excess delay before negotiating secondary SAs.
       </t>
       <t>
-A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and initial symmetric keys for that primary SA.
+A side effect of the EDHOC session is the establishment of a primary SA between the two SAFE peers and an initial pair of content keys for that primary SA.
 The primary SA keys provide SAFE message confidentiality after the initial authentication EDHOC session (see <xref target="sec-sa-use-safe-withpsa"/>).
 After a primary SA is established, this protocol allows creating secondary SAs through a single 1.5 round-trip activity without re-authenticating.
 It also allows managing established SAs, both primary and secondary, including life-cycle management of subordinate symmetric keys (re-keying with optional forward secrecy and decommissioning), in order to bound key use over time and over volume of processed data.
@@ -755,12 +761,20 @@ This is used to derive further values for content key material as defined in <xr
               </td>
             </tr>
             <tr>
+              <td>TX Content Key Depth Range:</td>
+              <td>The agreed range of valid size of the TX Content Key store for this SA, which is the intersection of the local and received range. New content keys will be generated as needed to stay within this range.</td>
+            </tr>
+            <tr>
               <td>TX Content Keys</td>
               <td>
 The primary SA has one or more content keys for outgoing PDUs to the Peer EID.
 Each content key has the information defined in <xref target="tab-info-sa-pri-txck"/> and is scoped within a single primary SA.
 The associated key material is derived from the shared secret created during <xref format="title" target="sec-act-ia"/> and <xref format="title" target="sec-act-cc"/> activities.
               </td>
+            </tr>
+            <tr>
+              <td>RX Content Key Depth Range:</td>
+              <td>The agreed range of valid size of the RX Content Key store for this SA, which is the intersection of the local and received range. New content keys will be accepted only if the size would stay within this range.</td>
             </tr>
             <tr>
               <td>RX Content Keys</td>
@@ -771,12 +785,20 @@ The associated key material is derived from the shared secret created during an 
               </td>
             </tr>
             <tr>
+              <td>RX Prekey Depth Range:</td>
+              <td>The agreed range of valid size of the RX Prekey store for this SA, which is the intersection of the local and received range. New prekeys will be generated as needed to stay within this range.</td>
+            </tr>
+            <tr>
               <td>RX Prekeys</td>
               <td>
 A set of one-time-use private asymmetric key material used to process received CK Creation activities.
 These private keys are generated locally and their associated public prekeys are communicated to the peer entity via CK Prekey activities.
 Each private prekey has the information defined in <xref target="tab-info-sa-pri-rxpre"/> and is scoped within a single primary SA.
               </td>
+            </tr>
+            <tr>
+              <td>TX Prekey Depth Range:</td>
+              <td>The agreed range of valid size of the TX Prekey store for this SA, which is the intersection of the local and received range. New prekeys will be accepted only if the size would stay within this range.</td>
             </tr>
             <tr>
               <td>TX Prekeys</td>
@@ -808,6 +830,10 @@ An entity <bcp14>SHOULD</bcp14> remove any TX Content Key when the wall-clock ti
             <tr>
               <td>Validity Time Interval</td>
               <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the local entity.</td>
+            </tr>
+            <tr>
+              <td>Peer Accepted</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-cc"/> activity without error.</td>
             </tr>
             <tr>
               <td>Partial IV Counter</td>
@@ -875,6 +901,10 @@ An entity <bcp14>SHOULD</bcp14> remove any RX Prekey when the wall-clock time ad
             <tr>
               <td>Validity Time Interval</td>
               <td>An absolute interval of time during which the key is valid for use. This interval is chosen by the local entity.</td>
+            </tr>
+            <tr>
+              <td>Peer Accepted</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-cp"/> activity without error.</td>
             </tr>
             <tr>
               <td>Private Key</td>
@@ -994,10 +1024,42 @@ This is used to derive further values for content key material as defined in <xr
               </td>
             </tr>
             <tr>
+              <td>TX Content Key Depth Range:</td>
+              <td>The agreed range of valid size of the TX Content Key store for this SA, which is the intersection of the local and received range. New content keys will be generated as needed to stay within this range.</td>
+            </tr>
+            <tr>
+              <td>RX Content Key Depth Range:</td>
+              <td>The agreed range of valid size of the RX Content Key store for this SA, which is the intersection of the local and received range. New content keys will be accepted only if the size would stay within this range.</td>
+            </tr>
+            <tr>
               <td>TX and RX Content Keys</td>
               <td>
 This field represent a set of context-specific key material and derived options for each direction between the two peers.
 The key material are derived from the shared secret created during <xref format="title" target="sec-act-sc"/> as defined in <xref target="sec-deriv-ssa-keys"/> and per-context specifications (see <xref target="sec-sa-use"/>).
+              </td>
+            </tr>
+            <tr>
+              <td>RX Prekey Depth Range:</td>
+              <td>The agreed range of valid size of the RX Prekey store for this SA, which is the intersection of the local and received range. New prekeys will be generated as needed to stay within this range.</td>
+            </tr>
+            <tr>
+              <td>RX Prekeys</td>
+              <td>
+A set of one-time-use private asymmetric key material used to process received CK Creation activities.
+These private keys are generated locally and their associated public prekeys are communicated to the peer entity via CK Prekey activities.
+Each private prekey has the information defined in <xref target="tab-info-sa-pri-rxpre"/> and is scoped within a single secondary SA.
+              </td>
+            </tr>
+            <tr>
+              <td>TX Prekey Depth Range:</td>
+              <td>The agreed range of valid size of the TX Prekey store for this SA, which is the intersection of the local and received range. New prekeys will be accepted only if the size would stay within this range.</td>
+            </tr>
+            <tr>
+              <td>TX Prekeys</td>
+              <td>
+A set of one-time-use public key material used to process and initiate CK Creation activities.
+These public keys are received from the peer entity through CK Prekey activities.
+Each public prekey has the information defined in <xref target="tab-info-sa-pri-txpre"/> and is scoped within a single secondary SA.
               </td>
             </tr>
           </tbody>
@@ -1479,7 +1541,7 @@ Before that step has occurred the primary SA is still being negotiated and has n
         <section anchor="sec-act-ia-edhoc">
           <name>EDHOC Requirements</name>
           <t>
-After receiving the <tt>ID_CRED_x</tt> values from a peer, each SAFE entity <bcp14>SHALL</bcp14> <cref>TBD</cref>.
+After receiving the <tt>ID_CRED_x</tt> values from a peer, each SAFE entity <bcp14>SHALL</bcp14> validate the contained or referenced credential in its <xref target="sec-info-peers">participating peers</xref> information base for the associated bundle source.
           </t>
           <t>
 When the Message 2 payload is received by the initiator, both peers have established an EDHOC shared secret but only the responder has sent an identity to authenticate with the initiator.
@@ -1493,13 +1555,17 @@ When the Message 3 payload is received by the responder, both peers have authent
 This activity allows each entity to indicate its SAFE-related capabilities to its peer.
 The Capability Indication (CI) activity <bcp14>SHALL</bcp14> be identified by activity type 1.
         </t>
+        <t>
+If the receiver of CI step 0 or step 1 does not find its content acceptable it <bcp14>SHALL</bcp14> reply with an error indication, not create any associated primary SA, and abort the parent IA activity.
+If a CI step 1 or 2 contains an error indication, the receiver <bcp14>SHALL</bcp14> not create any associated primary SA, and abort the parent IA activity.
+        </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
         </t>
         <ul>
           <li>Step 0: The payload is a map containing data items as defined below. Each item expresses a capability of the initiator entity.</li>
           <li>Step 1: The payload is a map containing data items as defined below. Each item expresses a capability of the responder entity.</li>
-          <li>Step 2: No payload, message is acknowledgement.</li>
+          <li>Step 2: Either no payload, indicating pure acknowledgement, or a map containing a single error item.</li>
         </ul>
         <table align="center">
           <name>CI Data Items</name>
@@ -1511,16 +1577,37 @@ The sequence of steps and their data for this activity are the following:
           </thead>
           <tbody>
             <tr>
+              <td>0</td>
+              <td>Error indications per <xref target="sec-data-ete"/> for messages after step 0.</td>
+            </tr>
+            <tr>
               <td>1</td>
-              <td>A <xref format="title" target="sec-data-cas"/> limit</td>
+              <td>A <xref format="title" target="sec-data-cas"/> limit.</td>
             </tr>
             <tr>
               <td>2</td>
-              <td>An <xref format="title" target="sec-data-ess"/> list</td>
+              <td>An <xref format="title" target="sec-data-ess"/> list.</td>
             </tr>
             <tr>
               <td>3</td>
-              <td>A <xref format="title" target="sec-data-bcs"/> list</td>
+              <td>A <xref format="title" target="sec-data-bcs"/> list.</td>
+            </tr>
+            <tr><td colspan="2">Options for subordinate key stores</td></tr>
+            <tr>
+              <td>10</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content keys supported in the primary SA. This range <bcp14>SHALL</bcp14> have a lower limit greater than zero to indicate that there can always be at least one RX content key.</td>
+            </tr>
+            <tr>
+              <td>11</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content keys used in the primary SA. This range <bcp14>SHALL</bcp14> have a lower limit greater than zero to indicate that there will always be at least one TX content key.</td>
+            </tr>
+            <tr>
+              <td>12</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content prekeys used in the primary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be used by the sending entity.</td>
+            </tr>
+            <tr>
+              <td>13</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content prekeys supported in the primary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be allowed by the sending entity.</td>
             </tr>
           </tbody>
         </table>
@@ -1530,6 +1617,11 @@ ci-data = { * $$ci-data } .within data-map
 $$ci-data //= (1: concur-act-limit)
 $$ci-data //= (2: eid-scheme-list)
 $$ci-data //= (3: bpsec-ctxid-list)
+
+$$ci-data //= (10: key-depth-range)
+$$ci-data //= (11: key-depth-range)
+$$ci-data //= (12: key-depth-range)
+$$ci-data //= (13: key-depth-range)
         </sourcecode>
         <t>
 It is not until reception of a peer's CI information that later activities can be initiated with the expectation that they will succeed.
@@ -1638,6 +1730,23 @@ But for more complex cases, the intersection needs to be represented as a logica
               <td>5</td>
               <td>A <xref format="title" target="sec-data-kus"/> for a specific BPSec context, which contains one or more set of key use options as defined in <xref target="sec-sa-use"/></td>
             </tr>
+            <tr><td colspan="2">Options for subordinate key stores</td></tr>
+            <tr>
+              <td>10</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content keys supported in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate that no RX content keys can be accepted and that associated traffic toward the CI sender cannot have security applied.</td>
+            </tr>
+            <tr>
+              <td>11</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content keys used in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate that no TX content keys will be created and associated traffic from the CI sender cannot have security applied.</td>
+            </tr>
+            <tr>
+              <td>12</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for RX content prekeys used in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be used by the sending entity.</td>
+            </tr>
+            <tr>
+              <td>13</td>
+              <td>A <xref format="title" target="sec-data-kdr"/> for TX content prekeys supported in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be allowed by the sending entity.</td>
+            </tr>
           </tbody>
         </table>
         <sourcecode type="cddl">
@@ -1656,7 +1765,13 @@ $$sc-data //= (7: safe-esx)
 $$sc-data //= (8: safe-nti)
 
 ; BPSec Context and its options for how to use the content keys
-$$sc-data //= (4: safe-kus)
+$$sc-data //= (4: safe-sos)
+$$sc-data //= (5: safe-kus)
+
+$$ci-data //= (10: key-depth-range)
+$$ci-data //= (11: key-depth-range)
+$$ci-data //= (12: key-depth-range)
+$$ci-data //= (13: key-depth-range)
         </sourcecode>
         <t>
 Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-prk_sa"/> with no initial content keys or prekeys.
@@ -1990,6 +2105,21 @@ bpsec-ctxid-list = [+ bpsec-ctxid]
 bpsec-ctxid = -32768 .. 32767
 </sourcecode>
       </section>
+      <section anchor="sec-data-kdr">
+        <name>Key Depth Range (KDR)</name>
+        <t>
+This data item indicates a range of valid depth of a key store in the sending entity.
+The value is an array containing two items: a minimum valid depth as a <tt>uint</tt> and a maximum valid depth as a <tt>uint</tt>.
+The minimum depth <bcp14>SHALL</bcp14> be less than or equal to the maximum depth.
+Specific uses of this data item can further restrict the valid minimum or maximum.
+        </t>
+        <sourcecode type="cddl">
+key-depth-range = [
+  min: uint,
+  max: uint
+]
+</sourcecode>
+      </section>
       <section anchor="sec-data-sai">
         <name>Security Association Identifier (SAI)</name>
         <t>
@@ -2198,10 +2328,10 @@ Note that when constrained, some activities can only begin with specific odd PDU
         </t>
         <t>The first example performs the following sequence of activities, using up to 7 concurrent activities:</t>
         <ol>
-          <li>IA to authenticate each entity.</li>
-          <li>CI to exchange capabilities of each entity before SAs are established.</li>
-          <li>One secondary SA initiated by Entity A (in PDU #2), with two non-FS CKs created by Entity A (in PDU #4) and two by Entity B (in PDU #5).</li>
-          <li>Two secondary SAs initiated by Entity B (in PDU #3), each with one non-FS CK created by Entity B (in PDU #5) and one by Entity A (in PDU #6).</li>
+          <li>IA to authenticate, initiated by Entity A.</li>
+          <li>Early CI to exchange capabilities of each entity before SAs are established.</li>
+          <li>One secondary SA initiated by Entity B (in PDU #2), with two non-FS CKs created by Entity B (in PDU #4) and two by Entity A (in PDU #5).</li>
+          <li>Two secondary SAs initiated by Entity A (in PDU #3), each with one non-FS CK created by Entity A (in PDU #5) and one by Entity B (in PDU #6).</li>
         </ol>
         <figure anchor="fig-safe-pipeline-large-cas">
           <name>Pipelining with large CAS limit</name>
@@ -2225,10 +2355,10 @@ PDU #1    #2    #3    #4    #5    #6    #7
         </figure>
         <t>The second example performs the same sequence, limited to 3 concurrent activities (no more than 2 initiated by each side):</t>
         <ol>
-          <li>IA to authenticate each entity.</li>
+          <li>IA to authenticate, initiated by Entity A.</li>
           <li>CI to exchange capabilities of each entity before SAs are established.</li>
-          <li>One secondary SA initiated by Entity A (in PDU #2), with two CKs created by Entity A (in PDU #8) and two by Entity B (in PDU #5 and #7).</li>
-          <li>Two secondary SAs initiated by Entity B (in PDU #5), each with one CK created by Entity B (in PDU #9) and one by Entity A (in PDU #10).</li>
+          <li>One secondary SA initiated by Entity B (in PDU #2), with two CKs created by Entity B (in PDU #8) and two by Entity A (in PDU #5 and #7).</li>
+          <li>Two secondary SAs initiated by Entity A (in PDU #5), each with one CK created by Entity A (in PDU #9) and one by Entity B (in PDU #10).</li>
         </ol>
         <figure anchor="fig-safe-pipeline-small-cas">
           <name>Pipelining with small CAS limit</name>
@@ -2250,17 +2380,49 @@ Regardless of how activities are aggregated into specific ADUs, the following re
 These build upon the per-activity constraints defined in <xref target="sec-act"/> to define a required or preferred order of activities, specifically during primary SA establishment.
         </t>
         <t>
-When no primary SA exists between two SAFE application endpoints, the first messaging between those applications <bcp14>SHALL</bcp14> be <xref format="title" target="sec-act-ia"/> used to progress the activity state and establish a primary SA.
+When no primary SA exists between two SAFE application endpoints, the first messaging between those applications <bcp14>SHALL</bcp14> be <xref format="title" target="sec-act-ia"/> used to establish an initial private channel and mutually authenticate each peer.
 After a primary SA exists, either side of the SA <bcp14>MAY</bcp14> choose to initialize a new primary SA and re-authenticate with its peer.
         </t>
         <t>
-Only after the first step of the IA activity has been received, the responder for the IA activity <bcp14>SHALL</bcp14> begin a <xref format="title" target="sec-act-ci"/> activity.
-This CI activity <bcp14>MAY</bcp14> begin immediately upon sending of the second IA step, or <bcp14>MAY</bcp14> wait until after the IA activity has completed and a primary SA is established.
+Only after step 0 of the IA activity has been received, the responder for the IA activity <bcp14>SHALL</bcp14> begin a <xref format="title" target="sec-act-ci"/> activity.
+This CI activity <bcp14>MAY</bcp14> begin immediately upon sending of the IA step 1, before the IA initiator has been authenticated, or <bcp14>MAY</bcp14> wait until after the IA activity has completed step 2 and both peers are authenticated.
+It is an implementation matter to configure whether CI is allowed before mutual authentication.
         </t>
         <t>
-Only after the first step of the CI activity has been received, the initiator for the IA activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-sc"/> activities.
-Only after the second step of the CI activity has been received, the responder for the IA activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-sc"/> activities.
-The number of concurrent SC activities allowed to be started at each step is limited by the CAS limit for the receiving peer.
+After step 3 of the IA activity has been received, both peers have authenticated each other and established a primary SA configured with a single content key in each direction, each having indefinite validity time, and no content prekeys.
+Any additional content keys on the primary SA depend on CC activities by each peer to create those keys.
+        </t>
+        <figure anchor="fig-safe-pipeline-early-ci">
+          <name>Early CI initiation</name>
+          <artwork align="left" type="ascii-art"><![CDATA[
+PDU #1    #2    #3    #4    #5    #6
+     |     |     |     |     |     |
+ (IA 0 --- 1 --- 2 --- 3)    |     |
+     | (CI 0 --- 1 --- 2)    |     |
+     |     |     |     |     |     |
+                      PSA
+                      SSA
+
+          =----- time ----->
+]]></artwork>
+        </figure>
+        <figure anchor="fig-safe-pipeline-late-ci">
+          <name>Late CI initiation</name>
+          <artwork align="left" type="ascii-art"><![CDATA[
+PDU #1    #2    #3    #4    #5    #6
+     |     |     |     |     |     |
+ (IA 0 --- 1 --- 2 --- 3)    |     |
+     |     |     | (CI 0 --- 1 --- 2)
+     |     |     |     |     |     |
+                      PSA         SSA
+
+          =----- time ----->
+]]></artwork>
+        </figure>
+        <t>
+Only after step 0 of the CI activity has been received, the responder for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-cc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
+Only after step 1 of the CI activity has been received, the initiator for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-cc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
+The number of concurrent activities allowed to be started at each step is limited by the CAS limit for the receiving peer.
         </t>
         <figure>
           <name>Notional States of a Primary SA</name>
@@ -2282,8 +2444,8 @@ IA step 3 |   |        |
   |                |
   |   Established  <---.
   |                |   | CK activities
-  +-------+------+-+   | (optional)
-ST step 0 |      |     |
+  +-------+------+-+   | PK activities
+ST step 0 |      |     | (optional)
           |      '-----`
     +-----v-----+
     | Half Down |
@@ -2313,7 +2475,8 @@ Future extensions to SAFE can define new CI data items and SC data items that al
       <section anchor="sec-pat-pk-upkeep">
         <name>Prekey Upkeep</name>
         <t>
-Similar to the discussion in <xref target="sec-pat-ck-upkeep"/> entities which choose to use forward secrecy on some (or all) of their content keys <cref>TBD</cref>
+Similar to the discussion in <xref target="sec-pat-ck-upkeep"/> entities which agree to use forward secrecy on some (or all) of their RX content keys need to upkeep RX content prekeys in that SA.
+Part of that is generating private prekey material locally and the other part is sending public prekey material to the peer entity.
         </t>
       </section>
     </section>

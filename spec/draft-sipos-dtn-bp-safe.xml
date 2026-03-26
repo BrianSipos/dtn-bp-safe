@@ -500,15 +500,22 @@ And each registry has a reserved block to allow private networks to make use of 
           <name>EDHOC Cipher Suites</name>
           <t>
 The EDHOC cipher suite, chosen by the initiator and agreed with the responder, controls the cryptographic algorithms used to secure the EDHOC session, derive internal key material, authenticate each entity to its peer, and to secure SAFE messages after the EDHOC session has completed.
-The base specification in <xref section="3.6" target="RFC9528"/> defines 9 suites which cover capabilities all the way from lightweight algorithms targeting constrained processors to one which adheres to the NSA Commercial National Security Algorithm Suite (CNSA) version 1 <cref>citation TBD</cref>.
+The base specification in <xref section="3.6" target="RFC9528"/> defines 9 cipher suites which cover capabilities all the way from lightweight algorithms targeting constrained processors to one which conforms to the US CNSS Commercial National Security Algorithm Suite (CNSA) 1.0 <xref target="CNSA1"/>.
+          </t>
+          <t>
+Additional cipher suites <xref target="I-D.spm-lake-pqsuites"/> enable the use of ML-KEM for EDHOC session confidentiality and ML-DSA for signature-based entity authentication which <cref>do not yet</cref> conform to CNSA 2.0 <xref target="CNSA2"/>.
+These cipher suites update the semantics of some fields in the EDHOC messages but not their structure or encoding.
           </t>
         </section>
         <section>
           <name>EDHOC Methods</name>
           <t>
 The EDHOC method controls how each entity authenticates to its peer within an EDHOC session.
-The base specification in <xref section="3.2" target="RFC9528"/> defines four methods to cover authenticating each side with either an asymmetric-key signature or a key-agreement-key MAC.
-Future methods are expected to provide access to post-quantum cryptographic (PQC) mechanisms.
+The base specification in <xref section="3.2" target="RFC9528"/> defines four methods to cover authenticating each side with either an asymmetric-key signature or an elliptic-curve Diffie-Hellman (ECDH) derived-key MAC.
+          </t>
+          <t>
+Additional methods <xref target="I-D.pocero-authkem-edhoc"/> enable the use of ML-KEM for efficient MAC-based authentication in a way which <cref>do not yet</cref> conforms to CNSA 2.0.
+These methods alter some behaviors related to the internal key schedule without affecting the names or uses of derived PRK values.
           </t>
         </section>
         <section>
@@ -522,10 +529,10 @@ Future credential types are expected to include pre-shared key material.
         <section>
           <name>SAFE Activity Types and Data Items</name>
           <t>
-The activity types defined in this document are expected to be sufficient for SA creation and management, but there is a registry of available types defined in <xref target="sec-iana-safe"/> for future expansion as necessary.
+The activity types defined in this document are expected to be sufficient for SA creation and management, but there is a registry of available types defined in <xref target="sec-iana-safe"/> for future expansion as necessary including reserved blocks for private and experimental uses.
           </t>
           <t>
-Within each activity type, specifically the <xref format="title" target="sec-act-sc"/> type, there is a block of code points reserved for private use and left unassigned for future specifications.
+Within each activity type, specifically the <xref format="title" target="sec-act-sc"/> type, there is a block of data item code points reserved for private use and a block left unassigned for future specifications.
 These are expected to include additional selectors for traffic flows beyond just source and destination EID from <xref target="sec-data-esx"/>.
           </t>
         </section>
@@ -1419,7 +1426,7 @@ The bundle creation timestamp (both DTN time and sequence number), defined in Ti
 This section defines the initial types of activity which make use of <xref target="sec-layers-msg">SAFE message</xref> sequencing to exchange data.
       </t>
       <t>
-Any current or future activity type <bcp14>SHALL</bcp14> define how many steps comprise a single sequence of messages and what is the required data payload of each step.
+Each activity type definition <bcp14>SHALL</bcp14> include how many steps comprise a single sequence of messages and what the required and optional data payloads are for each step.
       </t>
       <section anchor="sec-act-ia">
         <name>Initial Authentication (IA)</name>
@@ -2291,9 +2298,9 @@ PRK_Exporter
  |   | |   +--------------->(EXP)               | |
  |   | |   |                  |                 | |
  |   | |   |[no PK]        SALT_CK              | |
- |   | |   |                  |                 | |
- |   | |   |                  v                 | |
- .   | |   |  (KEM)-AKM_CK->(EXT)               | |
+ |   | |   |       (PSS)      |                 | |
+ |   | |   |         |        v                 | |
+ .   | |   |       AKM_CK-->(EXT)               | |
  .   | |   |                  |                 | |
  .   | |   |               PRK_CK   IDX,KID,ARN | |
      | |   |                  |     |||         | |
@@ -2329,8 +2336,8 @@ SAFE_EXP(PRK, context, length)
         </sourcecode>
       </figure>
       <t>
-In this document the notation "|" is used to indicate the concatenation of deterministically encoded CBOR items as a CBOR sequence without byte string wrapping.
-So in the definition of expand function above, the length is encoded and concatenated to the context sequence and used as opaque bytes by the EDHOC function.
+In this document the notation "E()" is used to indicate the deterministically encoded CBOR and the notation "|" is used to indicate the concatenation of encoded items as a CBOR sequence without byte string wrapping.
+So in the definition of expand function above, the length is encoded and concatenated to the context sequence, which is treated as opaque input bytes to the expand function.
 This is not a different mechanism than the EDHOC "info" rule sequence, just a different notation in pseudocode. 
       </t>
       <section anchor="sec-deriv-prk_sa">
@@ -2361,6 +2368,18 @@ PRK_SA = EDHOC_Exporter(TBA4, E(SAI_i) | E(SAI_r), hash_length)
           </sourcecode>
         </figure>
       </section>
+      <section anchor="sec-deriv-akm_ck">
+        <name>Prekey Shared Secret</name>
+        <t>
+The prekey shared secret (PSS) process is used to produce additional key material (AKM) data to enable forward secrecy of derived values.
+The AKM is not assumed to be uniformly random, so it needs to use a KDF extraction function (with appropriate salt) to derive any PRK values.
+This is the exact same strategy and mechanism used by EDHOC itself for static DH authentication in <xref section="4.1.1" target="RFC9528"/>.
+        </t>
+        <t>
+When the prekey is an ECDH derivation key, the <tt>AKM_CK</tt> is the secret <tt>G_XY</tt> from the ECDH process.
+When the prekey is a KEM decapsulation key, the <tt>AKM_CK</tt> is the secret <tt>K</tt> from the KEM decapsulation process.
+        </t>
+      </section>
       <section anchor="sec-deriv-prk_ck">
         <name>Content Key PRK</name>
         <t>
@@ -2371,8 +2390,20 @@ Either the CK Create activity references an associated Prekey known to the respo
 When no prekey is referenced during SA creation, the <tt>PRK_CK</tt> used is the associated <tt>PRK_SA</tt> value of the parent SA.
         </t>
         <t>
-When a prekey is referenced during SA creation, the <tt>PRK_CK</tt> is extracted based on the prekey and the <tt>PRK_SA</tt> value as shown in <xref target="fig-deriv-prk_ck"/>.
+When a prekey is referenced during SA creation, the <tt>PRK_CK</tt> is extracted based on a chosen prekey as shown in <xref target="fig-deriv-prk_ck"/>, where the named parameters are:
         </t>
+        <dl>
+          <dt><tt>PRK_SA</tt>:</dt>
+          <dd>The parent SA PRK value.</dd>
+          <dt><tt>KID_CK</tt>:</dt>
+          <dd>The KID of the to-be-created content key, unique within the parent SA key store, taken from a <xref format="title" target="sec-data-kid"/> from the initiator.</dd>
+          <dt><tt>KID_PK</tt>:</dt>
+          <dd>The KID of the referenced prekey, unique within the parent SA key store, taken from a <xref format="title" target="sec-data-kid"/> from the initiator.</dd>
+          <dt><tt>hash_length</tt>:</dt>
+          <dd>The length of output size of the Hash Algorithm of the Primary SA.</dd>
+          <dt><tt>AKM_CK</tt>:</dt>
+          <dd>The prekey shared secret, as defined in <xref target="sec-deriv-akm_ck"/></dd>
+        </dl>
         <figure anchor="fig-deriv-prk_ck">
           <name>Content Key PRK pseudocode</name>
           <sourcecode>
@@ -2380,10 +2411,6 @@ SALT_CK = SAFE_EXP(PRK_SA, E(KID_CK) | E(KID_PK), hash_length)
 PRK_CK = SAFE_EXT(SALT_CK, AKM_CK)
           </sourcecode>
         </figure>
-        <t>
-When the prekey is an ECDH derivation key, the <tt>AKM_CK</tt> is the derived shared secret <tt>G_XY</tt>.
-When the prekey is a KEM decapsulation key, the <tt>AKM_CK</tt> is the decapsulated shared secret <tt>K</tt>.
-        </t>
       </section>
       <section anchor="sec-deriv-psa-keys">
         <name>Primary SA Content Keys</name>
@@ -3828,9 +3855,31 @@ These entries are distinct and separate from the "EDHOC Error Codes" registry of
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-dtn-bibect.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-dtn-bpsec-cose.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-dtn-eid-pattern.xml"/>
+        <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.pocero-authkem-edhoc.xml"/>
+        <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.spm-lake-pqsuites.xml"/>
       </references>
       <references>
         <name>Informative References</name>
+        <reference anchor="CNSA1" target="">
+          <front>
+            <title>Use of Public Standards for Secure Information Sharing</title>
+            <seriesInfo name="CNSS Policy" value="15"/>
+            <author>
+              <organization>US Committee on National Security Systems</organization>
+            </author>
+            <date day="20" month="October" year="2016"/>
+          </front>
+        </reference>
+        <reference anchor="CNSA2" target="">
+          <front>
+            <title>Use of Public Standards for Secure Information Sharing</title>
+            <seriesInfo name="CNSS Policy" value="15"/>
+            <author>
+              <organization>US Committee on National Security Systems</organization>
+            </author>
+            <date month="December" year="2024"/>
+          </front>
+        </reference>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml-misc/reference.IEEE.802.1X-2020.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.3552.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.4838.xml"/>

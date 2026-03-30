@@ -1342,7 +1342,7 @@ safe-error = int16
         </section>
       </section>
       <section anchor="sec-layers-retrans">
-        <name>States, Deduplication, and Retransmission</name>
+        <name>Activity States, Deduplication, and Retransmission</name>
         <t>
 As described in <xref target="sec-info-act"/>, the state kept by each entity about an activity includes the step of the message last sent by the entity (LTX) and the step of the message last received from the peer entity (LRX).
 Based on these two step states, each entity can determine how to make progress
@@ -1361,7 +1361,7 @@ In that diagram, if a state transition has a specific trigger condition it is in
         | {-1,-1} Start   |               | {-1,-1} Start   |  
         |                 |     Step 0    |                 |  
         +--------+--------+    Message    +--------+--------+  
-      Re-TX      |            ident+data     [RX 0]|           
+      Re-TX      |          ident+payload    [RX 0]|           
      +--------+  | TX 0    ~~~~~~~~~~~~~~>         |           
      |        v  v                                 v           
      |  +-----------------+               +-----------------+  
@@ -1369,7 +1369,7 @@ In that diagram, if a state transition has a specific trigger condition it is in
      +--+ { 0,-1} Wait    |               | {-1, 0} Process |  
  [timer]|                 |     Step 1    |                 |  
         +--------+--------+    Message    +--------+--------+  
-                 |[RX 1]      ident+data           |         Re-TX
+                 |[RX 1]    ident+payload          |         Re-TX
                  |         <~~~~~~~~~~~~~~    TX 1 |  +--------+
                  v                                 v  v        |
         +-----------------+               +-----------------+  |
@@ -1433,8 +1433,16 @@ Upon receiving a SAFE message from a peer, an entity <bcp14>SHALL</bcp14> perfor
           <li>If either the LTX or LRX step are beyond the number of steps for this activity type, the activity is in the finished state.</li>
         </ol>
         <t>
-Error indication and handling is generally accomplished by terminating an activity early, indicating error conditions within data item(s) specific to the activity type, and possibly the initiator of the terminated activity attempting a new activity of that type with options adjusted based on error feedback.
+Failure of an activity can be accomplished by terminating an activity early using an error indication instead of payload data.
 When an error is indicated on an activity it <bcp14>SHALL</bcp14> be considered finished regardless of the step in which the error was indicated.
+Retransmission of a message containing an error indication occurs exactly as any other SAFE message.
+The logic for if and when to retry an activity which has failed with an error indication is implementation matter and will likely depend on the type of activity which has failed.
+Any subsequent retry <bcp14>SHALL</bcp14> take the form of a new activity of the same type, as the earlier activity has finished.
+The retry can have its options adjusted based on the specific error type encountered on the earlier activity.
+        </t>
+        <t>
+Rather than indicating an error, a softer form of failure can be handled using conditions within data item(s) specific to the activity type.
+This is why some activities include a mechanism for providing multiple proposals during initiation and allowing the peer to choose a more narrow condition in its response.
         </t>
       </section>
       <section anchor="sec-layers-agg">

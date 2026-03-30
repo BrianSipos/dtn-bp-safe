@@ -255,12 +255,16 @@ This use case corresponds to the <tt>transport</tt> mode of <xref target="sec-da
           </t>
           <t>
 For this case the bundle flows and security processing will look similar to that of <xref target="fig-usecase-onehop"/> except that there are more hops between the participating nodes.
-The negotiated security service is sourced immediately before forwarding (specifically to the peer node of the SA), has a lifetime of just a single bundle hop, and is accepted immediately upon reception at that peer node.
+The negotiated security service is sourced immediately before forwarding (specifically to the peer node of the SA), has a lifetime of several bundle hops, and is accepted immediately upon reception at that peer node.
           </t>
           <t>
 Also similar to the one-hop case, there are more constraints and considerations for the target of the security operation.
 One consideration is the fact that BP topology or routing, outside the scope of this protocol, <bcp14>SHALL</bcp14> be configured to ensure that the selected traffic actually gets forwarded between the participating nodes.
 If the actual forwarding path passes through one of the nodes but not the other, the security operation will be sourced properly but never accepted and will serve no purpose.
+          </t>
+          <t>
+Constraints on the target for this use case are more complex than for the one-hop case because the security operation needs to ensure uniqueness for its lifetime while also not targeting blocks with one-hop lifetime (or blocks which are expected to be modified at each hop).
+This use case could include integrity operations targeting an extension block specific to a transit network, where the extension (and its security) is added at ingress to the transit network and is removed at egress from the transit network.
           </t>
         </section>
         <section anchor="sec-intro-usecases-tunnel">
@@ -427,7 +431,7 @@ Having activities be unilateral makes the overall protocol more delay-tolerant.
       <section anchor="sec-prococol-ck-lifecycle">
         <name>Content Key Lifecycle Management</name>
         <t>
-Within each SA, both primary and secondary, there are some number of content keys (CKs) available for use in the data plane.
+Within each SA, both primary and secondary, there are some number of content keys available for use in the data plane.
 The primary SA content keys are used for AEAD of SAFE PDUs themselves, while secondary SA content keys are for BPSec operations on other traffic.
         </t>
         <t>
@@ -435,9 +439,9 @@ The primary SA has an implicit pair of content keys created as part of the Initi
 All other KIDs of primary and secondary SAs are explicitly chosen by the entity which would use that key as the security source (<em>i.e.</em>, the TX side of the data plane).
         </t>
         <t>
-Within a single SA, the lifecycle of a single CK is depicted in <xref target="fig-ck-lifecycle"/> where "Entity A" is the TX end of that key and "Entity B" is the RX end.
-The optional CK Prekey activity and its public key data is used to ensure forward secrecy of the CK when desired by the TX end.
-The CK Discard activity is used to inform the RX end when the CK will no longer be used for security operations and it is safe to be discarded.
+Within a single SA, the lifecycle of a single content key is depicted in <xref target="fig-ck-lifecycle"/> where "Entity A" is the TX end of that key and "Entity B" is the RX end.
+The optional Prekey Creation activity and its public key data is used to ensure forward secrecy of the content key when desired by the TX end.
+The Key Discard activity is used to inform the RX end when the content key will no longer be used for security operations and it is safe to be discarded.
         </t>
         <figure anchor="fig-ck-lifecycle">
           <name>Activity sequence for one SA content key</name>
@@ -450,21 +454,21 @@ The CK Discard activity is used to inform the RX end when the CK will no longer 
     |          ...           |
     |                        |
     |        optional        |
-    |        CK Prekey       |
+    |     Prekey Creation    |
     |<-----------------------+
     |- - - - - - - - - - - ->|
     |                        |
-    |       CK Creation      |
+    |      Key Creation      |
     +----------------------->|
     |<- - - - - - - - - - - -|
     |                        |
-    |        Use CK in       |
-    |        data plane      |
+    |   Use content key in   |
+    |       data plane       |
     +----------------------->|
     +----------------------->|
     |                        |
     |        optional        |
-    |        CK Discard      |
+    |      Key Discard       |
     +----------------------->|
     |<- - - - - - - - - - - -|
 ]]></artwork>
@@ -478,7 +482,7 @@ All of those CKs can be created immediately after SC creation with future validi
         <figure anchor="fig-ck-timeline">
           <name>Timeline of SA content keys</name>
           <artwork align="center" type="ascii-art"><![CDATA[
- (SC) (CC)                             (ST)
+ (SC) (KC)                             (ST)
   |    |                                 |
   +--------------------------------------+
   |         Security Association         |
@@ -800,7 +804,7 @@ This applies to the <tt>SAFE_EXT</tt> and <tt>SAFE_EXP</tt> functions defined in
               </td>
             </tr>
             <tr>
-              <td>Primary pseudo-random key (PRK)</td>
+              <td>Primary pseudo-random key (PRK):</td>
               <td>
 Internal key material derived from the EDHOC session for this SA, as the byte string <tt>PRK_SA</tt> defined in <xref target="sec-deriv-prk_sa"/>.
 This is used to derive further values for content key material as defined in <xref target="sec-deriv-psa-keys"/>.
@@ -815,7 +819,7 @@ This is used to derive further values for content key material as defined in <xr
               <td>
 The primary SA has one or more content keys for outgoing PDUs to the Peer EID.
 Each content key has the information defined in <xref target="tab-info-sa-pri-txck"/> and is scoped within a single primary SA.
-The associated key material is derived from the shared secret created during <xref format="title" target="sec-act-ia"/> and <xref format="title" target="sec-act-cc"/> activities.
+The associated key material is derived from the shared secret created during <xref format="title" target="sec-act-ia"/> and <xref format="title" target="sec-act-kc"/> activities.
               </td>
             </tr>
             <tr>
@@ -879,7 +883,7 @@ An entity <bcp14>SHOULD</bcp14> remove any TX Content Key when the wall-clock ti
             </tr>
             <tr>
               <td>Peer Accepted</td>
-              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-cc"/> activity without error.</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-kc"/> activity without error.</td>
             </tr>
             <tr>
               <td>Partial IV Counter</td>
@@ -950,7 +954,7 @@ An entity <bcp14>SHOULD</bcp14> remove any RX Prekey when the wall-clock time ad
             </tr>
             <tr>
               <td>Peer Accepted</td>
-              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-cp"/> activity without error.</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-pc"/> activity without error.</td>
             </tr>
             <tr>
               <td>Private Key</td>
@@ -1252,9 +1256,9 @@ This item is a signed integer used to distinguish the purpose of the associated 
 The activity type value <bcp14>SHALL</bcp14> be limited to the inclusive range -32768 to 32767.
 As defined in <xref target="sec-iana-safe"/>, positive values are for well-known activities, zero is reserved for the IA pseudo-activity (<xref target="sec-act-ia"/>), and negative values are reserved for experimental or private use.
           </dd>
-          <dt>Data Payload:</dt>
+          <dt>Payload Data or Error Indication:</dt>
           <dd>
-This item is either a CBOR map or a byte string, used to contain data specific to the logical step in the activity corresponding to the containing message.
+This item is either a <xref target="sec-layers-msg-data">payload data</xref>, which is a CBOR map used to contain data items specific to the logical step in the activity from the containing message, or an <xref target="sec-layers-msg-error">error indication</xref>, which is a signed integer.
           </dd>
         </dl>
         <t>
@@ -1262,51 +1266,80 @@ The combination of Activity Index and Activity Step <bcp14>SHALL</bcp14> uniquel
         </t>
         <t>
 The activity index <bcp14>SHALL</bcp14> be unique per initiator and transport conversation (<em>e.g.</em>, unordered pair of source and destination EID).
-The first activity index for a conversation <bcp14>SHALL</bcp14> be zero, and each subsequent activity initiated by a peer <bcp14>SHALL</bcp14> increment the activity index by one.
+The first activity index for a conversation <bcp14>SHALL</bcp14> be zero, and each subsequent activity initiated by an entity <bcp14>SHALL</bcp14> increment the activity index by one.
+A consequence of this is that although SAFE is delay-tolerant and loss-tolerant, it does operate with the state of the two entities in lockstep as activities are initiated by each peer.
         </t>
         <t>
 The first step of an activity <bcp14>SHALL</bcp14> be zero, and each subsequent step <bcp14>SHALL</bcp14> increment by one.
 This means that the initiator of an activity can be identified implicitly because it will only send messages with an even step number and will only receive messages with an odd step number.
         </t>
         <t>
-The last message of an activity sequence <bcp14>SHALL NOT</bcp14> contain either an activity type or a data payload.
-That last message is purely to acknowledge the message from the previous step and conclude the activity.
+The first step of an activity <bcp14>SHALL NOT</bcp14> contain an error indication, as there are no previous steps or data items to have caused an error and each activity has a independent state progression (see <xref target="sec-layers-retrans"/>).
+Any messages after the first step of an activity <bcp14>SHALL</bcp14> contain either a payload or an error indication.
+The determination of if and when to send an error indication is a determination of the sending entity.
+        </t>
+        <t>
+The last message of an activity sequence <bcp14>SHALL NOT</bcp14> contain a payload; this message is purely to acknowledge the receipt of the previous step and conclude the activity.
+The last message <bcp14>MAY</bcp14> contain an error indication, acknowledging the preceding step but indicating the activity has failed.
         </t>
         <t keepWithNext="true">
-This structure is indicated by the following CDDL for the general SAFE message structure and its data item payload.
+This is indicated by the following CDDL for the general SAFE message structure and a generic for defining new activity types.
         </t>
-        <sourcecode type="cddl">
+        <sourcecode type="cddl"><![CDATA[
 safe-msg-bstr = bstr .cborseq safe-msg
 
 safe-msg = $safe-msg .within safe-msg-struct
 safe-msg-struct = [
-    msg-ident,
-    ? (
-        act-type: int16,
-        data-map
-    )
-]
-
-; Unique identifier for a single message (one step of one activity)
-msg-ident = (
     act-idx: uint,
     act-step: uint,
-)
-
-; activity-type-specific data
-; non-negative labels are well-known
-; negative labels are private use
-data-map = {
-    * label =&gt; value,
-}
-; Generic map label
-label = int16
-; Generic map value
-value = any
-
+    act-type: int16,
+    ? (safe-map / safe-error)
+]
 ; Signed integer that fits in 16-bit two's complement form
 int16 = -32768 .. 32767
-        </sourcecode>
+
+; Generic for defining activity types and their payload
+safe-act-type<act-type, act-pyld> = [
+    act-idx: uint,
+    act-step: uint,
+    act-type: act-type,
+    ? (act-pyld / safe-error)
+]
+]]></sourcecode>
+        <section anchor="sec-layers-msg-data">
+          <name>Payload Data Map</name>
+          <t>
+All activity-type-specific data items are encoded as a CBOR map having integer keys limited to the inclusive range -32768 to 32767.
+The interpretation of each item (label and data) of the payload map depends on the activity type of the parent SAFE message, as defined in <xref target="sec-act"/> and registered with IANA in <xref target="tab-iana-safe-msg-items"/>.
+          </t>
+          <t>
+This is indicated by the following CDDL, which is also used for generic data maps within SAFE messages.
+          </t>
+          <sourcecode type="cddl">
+safe-map = {
+    * safe-label =&gt; safe-value,
+}
+; Generic map label
+safe-label = int16
+; Generic map value
+safe-value = any
+</sourcecode>
+        </section>
+        <section anchor="sec-layers-msg-error">
+          <name>Error Indication</name>
+          <t>
+Rather than containing a payload, a safe message can instead contain an error indication used by its sender to signal a failure to process a received message or otherwise make progress in an activity.
+The error indication <bcp14>SHALL</bcp14> consist of an error type value as an integer limited to the inclusive range -32768 to 32767.
+          </t>
+          <t>
+These values are used in many activities to indicate a failure in decoding, processing, or consistency of received message contents.
+Well-known error values are non-negative and registered with IANA in <xref target="tab-iana-safe-ete"/>.
+Private and experimental use error values are negative and not registered.
+          </t>
+          <sourcecode type="cddl">
+safe-error = int16
+</sourcecode>
+        </section>
       </section>
       <section anchor="sec-layers-retrans">
         <name>States, Deduplication, and Retransmission</name>
@@ -1534,7 +1567,7 @@ The bundle creation timestamp (both DTN time and sequence number), defined in Ti
 This section defines the initial types of activity which make use of <xref target="sec-layers-msg">SAFE message</xref> sequencing to exchange data.
       </t>
       <t>
-Each activity type definition <bcp14>SHALL</bcp14> include how many steps comprise a single sequence of messages and what the required and optional data payloads are for each step.
+Each activity type definition <bcp14>SHALL</bcp14> include how many steps comprise a single sequence of messages and what the required and optional payloads are for each step.
       </t>
       <section anchor="sec-act-ia">
         <name>Initial Authentication (IA)</name>
@@ -1624,10 +1657,6 @@ The sequence of steps and their data for this activity are the following:
           </thead>
           <tbody>
             <tr>
-              <td>0</td>
-              <td>Error indications per <xref target="sec-data-ete"/> for messages after step 0.</td>
-            </tr>
-            <tr>
               <td>1</td>
               <td>A <xref format="title" target="sec-data-cas"/> limit.</td>
             </tr>
@@ -1658,8 +1687,9 @@ The sequence of steps and their data for this activity are the following:
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-ci-data = { * $$ci-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<1, ci-data>
+ci-data = { * $$ci-data } .within safe-map
 
 $$ci-data //= (1: concur-act-limit)
 $$ci-data //= (2: eid-scheme-list)
@@ -1669,7 +1699,7 @@ $$ci-data //= (10: key-depth-range)
 $$ci-data //= (11: key-depth-range)
 $$ci-data //= (12: key-depth-range)
 $$ci-data //= (13: key-depth-range)
-        </sourcecode>
+]]></sourcecode>
         <t>
 It is not until reception of a peer's CI information that later activities can be initiated with the expectation that they will succeed.
 Any time after the first reception of CI step 0 or 1, the receiving entity <bcp14>MAY</bcp14> initiate other activities which rely on the capabilities expressed in the CI data items.
@@ -1707,12 +1737,12 @@ The sequence of steps and their data for this activity are the following:
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-en-data = {* $$en-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<2, en-data>
+en-data = {* $$en-data } .within safe-map
 
-$$en-data //= (1: en-cause)
-en-cause = [msg-ident]
-        </sourcecode>
+; TBD are there built-in events to be notified of outside of activities?
+]]></sourcecode>
       </section>
       <section anchor="sec-act-sc">
         <name>SA Creation (SC)</name>
@@ -1743,10 +1773,6 @@ But for more complex cases, the intersection needs to be represented as a logica
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>0</td>
-              <td>Error indications per <xref target="sec-data-ete"/> for messages after step 0</td>
-            </tr>
             <tr>
               <td>1</td>
               <td>The local SAI per <xref target="sec-data-sai"/> for the SA which does not yet exist</td>
@@ -1796,11 +1822,10 @@ But for more complex cases, the intersection needs to be represented as a logica
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-sc-data = {* $$sc-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<3, sc-data>
+sc-data = {* $$sc-data } .within safe-map
 
-; Error codes from the responder
-$$sc-data //= (0: safe-ete)
 ; SAI for the sender
 $$sc-data //= (1: safe-sai)
 
@@ -1815,11 +1840,11 @@ $$sc-data //= (8: safe-nti)
 $$sc-data //= (4: safe-sos)
 $$sc-data //= (5: safe-kus)
 
-$$ci-data //= (10: key-depth-range)
-$$ci-data //= (11: key-depth-range)
-$$ci-data //= (12: key-depth-range)
-$$ci-data //= (13: key-depth-range)
-        </sourcecode>
+$$sc-data //= (10: key-depth-range)
+$$sc-data //= (11: key-depth-range)
+$$sc-data //= (12: key-depth-range)
+$$sc-data //= (13: key-depth-range)
+]]></sourcecode>
         <t>
 Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-prk_sa"/> with no initial content keys or prekeys.
 Any time after the first reception or transmission of SC step 1, either entity <bcp14>MAY</bcp14> initiate other activities which refer to the new SA.
@@ -1831,7 +1856,7 @@ Before that step has occurred the secondary SA is still being negotiated and has
         <t>
 This activity is used to negotiate removal of an established SA from both entities.
 Either peer can initiate this activity for any reason at any time after the SA is created.
-The SA Teardown (ST) activity <bcp14>SHALL</bcp14> be identified by activity type 5.
+The SA Teardown (ST) activity <bcp14>SHALL</bcp14> be identified by activity type 4.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1856,25 +1881,24 @@ The sequence of steps and their data for this activity are the following:
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-st-data = {* $$st-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<4, st-data>
+st-data = {* $$st-data } .within safe-map
 
-; Error codes from the responder
-$$st-data //= (0: safe-ete)
 ; SAI for the sender
 $$st-data //= (1: safe-sai / true)
-        </sourcecode>
+]]></sourcecode>
         <t>
 Upon the first reception or transmission of ST step 1, the entity <bcp14>SHALL</bcp14> remove the referenced SA from its associated information bases.
 Any time after the first reception or transmission of ST step 1, either entity <bcp14>SHALL NOT</bcp14> refer to the removed SA from any other activities.
         </t>
       </section>
-      <section anchor="sec-act-cp">
-        <name>CK Prekey (CP)</name>
+      <section anchor="sec-act-pc">
+        <name>Prekey Creation (PC)</name>
         <t>
-This activity is used to preemptively share a one-time-use public key which can be used to add forward secrecy to later-derived content keys in the <xref format="title" target="sec-act-cc"/> activity.
+This activity is used to preemptively share a one-time-use public key which can be used to add forward secrecy to later-derived content keys in the <xref format="title" target="sec-act-kc"/> activity.
 The recipient of the CP activity will be the initiator of the later CC activity.
-The SA Prekey (SP) activity <bcp14>SHALL</bcp14> be identified by activity type 5.
+The Prekey (PC) activity <bcp14>SHALL</bcp14> be identified by activity type 5.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1884,7 +1908,7 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 2: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
-          <name>SA Prekey Data Items</name>
+          <name>Prekey Creation Data Items</name>
           <thead>
             <tr>
               <th>Label</th>
@@ -1906,26 +1930,27 @@ The sequence of steps and their data for this activity are the following:
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-cp-data = {* $$cp-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<5, pc-data>
+pc-data = {* $$pc-data } .within safe-map
 
 ; Identifiers for the responder
-$$cp-data //= (1: safe-sai)
-$$cp-data //= (2: safe-kid)
+$$pc-data //= (1: safe-sai)
+$$pc-data //= (2: safe-kid)
 
-$$cp-data //= (3: safe-nti)
-$$cp-data //= (4: safe-pks)
-        </sourcecode>
+$$pc-data //= (3: safe-nti)
+$$pc-data //= (4: safe-pks)
+]]></sourcecode>
         <t>
-Upon the first reception of CP step 0, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and record the prekey information within TX Prekey store of the SA.
-Any time after the first reception of CP step 0, the entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cc"/> activities which refer to the new prekey by its KID.
+Upon the first reception of PC step 0, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and record the prekey information within TX Prekey store of the SA.
+Any time after the first reception of PC step 0, the entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-kc"/> activities which refer to the new prekey by its KID.
         </t>
       </section>
-      <section anchor="sec-act-cc">
-        <name>CK Creation (CC)</name>
+      <section anchor="sec-act-kc">
+        <name>Key Creation (KC)</name>
         <t>
 This activity is used to establish a new set of derived key (and possibly other) material within an existing SA without changing the other parameters of the SA (<em>e.g.</em>, algorithm choice or endpoint selectors).
-The CK Creation (CC) activity <bcp14>SHALL</bcp14> be identified by activity type 6.
+The Key Creation (KC) activity <bcp14>SHALL</bcp14> be identified by activity type 6.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1935,7 +1960,7 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 2: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
-          <name>CK Creation Data Items</name>
+          <name>Key Creation Data Items</name>
           <thead>
             <tr>
               <th>Label</th>
@@ -1953,7 +1978,7 @@ The sequence of steps and their data for this activity are the following:
             </tr>
             <tr>
               <td>10</td>
-              <td>An optional identifier for a prekey, shared by the responder in an earlier <xref format="title" target="sec-act-cp"/> activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is a TX prekey, from the responder side this is an RX prekey.</td>
+              <td>An optional identifier for a prekey, shared by the responder in an earlier <xref format="title" target="sec-act-pc"/> activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is a TX prekey, from the responder side this is an RX prekey.</td>
             </tr>
             <tr>
               <td>11</td>
@@ -1961,31 +1986,32 @@ The sequence of steps and their data for this activity are the following:
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-cc-data = {* $$cc-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<6, ci-data>
+kc-data = {* $$kc-data } .within safe-map
 
 ; Identity of the new CK from the initiator
-$$cc-data //= (1: safe-sai)
-$$cc-data //= (2: safe-kid)
+$$kc-data //= (1: safe-sai)
+$$kc-data //= (2: safe-kid)
 
 ; Optional PRF parameters
-$$cc-data //= (10: safe-kid)
-$$cc-data //= (11: safe-arn)
-        </sourcecode>
+$$kc-data //= (10: safe-kid)
+$$kc-data //= (11: safe-arn)
+]]></sourcecode>
         <t>
-Upon the first reception or transmission of CC step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
-Any time after the first reception or transmission of CC step 0, either entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-cd"/> or <xref format="title" target="sec-act-cr"/> activities which refer to the new content key by its KID.
+Upon the first reception or transmission of KC step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
+Any time after the first reception or transmission of KC step 0, either entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-kd"/> or <xref format="title" target="sec-act-kr"/> activities which refer to the new content key by its KID.
         </t>
       </section>
-      <section anchor="sec-act-cd">
-        <name>CK Discard (CD)</name>
+      <section anchor="sec-act-kd">
+        <name>Key Discard (KD)</name>
         <t>
 This activity is used to indicate that an earlier content key has been discarded from its TX side owner and will no longer be used for any data plane security.
-The CK Discard (CD) activity <bcp14>SHALL</bcp14> be identified by activity type 7.
+The Key Discard (CD) activity <bcp14>SHALL</bcp14> be identified by activity type 7.
         </t>
         <t>
-It is an implementation matter to determine when to initiate a CK Discard activity.
-The CK Discard <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
+It is an implementation matter to determine when to initiate a Key Discard activity.
+The Key Discard <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -1995,7 +2021,7 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 1: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
-          <name>CK Discard Data Items</name>
+          <name>Key Discard Data Items</name>
           <thead>
             <tr>
               <th>Label</th>
@@ -2013,22 +2039,23 @@ The sequence of steps and their data for this activity are the following:
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-cd-data = {* $$cd-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<7, kd-data>
+kd-data = {* $$kd-data } .within safe-map
 
 ; Identity of the CK from the initiator
-$$cd-data //= (1: safe-sai)
-$$cd-data //= (2: safe-kid)
-        </sourcecode>
+$$kd-data //= (1: safe-sai)
+$$kd-data //= (2: safe-kid)
+]]></sourcecode>
         <t>
-Upon the first transmission of CD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that TX content key.
-Upon the first reception of CD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that RX content key.
-Any time after the first reception or transmission of CD step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
-After transmission of CD step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
+Upon the first transmission of KD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that TX content key.
+Upon the first reception of KD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that RX content key.
+Any time after the first reception or transmission of KD step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
+After transmission of KD step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
         </t>
       </section>
-      <section anchor="sec-act-cr">
-        <name>CK Reject (CR)</name>
+      <section anchor="sec-act-kr">
+        <name>Key Reject (CR)</name>
         <t>
 This activity is used to indicate that an earlier content key has been rejected from its RX side and will no longer be used for any data plane security.
 The CK Reject (CR) activity <bcp14>SHALL</bcp14> be identified by activity type 8.
@@ -2045,7 +2072,7 @@ The sequence of steps and their data for this activity are the following:
           <li>Step 1: No payload, message is acknowledgement.</li>
         </ul>
         <table align="center">
-          <name>CK Reject Data Items</name>
+          <name>Key Reject Data Items</name>
           <thead>
             <tr>
               <th>Label</th>
@@ -2063,25 +2090,26 @@ The sequence of steps and their data for this activity are the following:
             </tr>
           </tbody>
         </table>
-        <sourcecode type="cddl">
-cr-data = {* $$cr-data } .within data-map
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<8, kr-data>
+kr-data = {* $$kr-data } .within safe-map
 
 ; Identity of the CK from the initiator
-$$cr-data //= (1: safe-sai)
-$$cr-data //= (2: safe-kid)
-        </sourcecode>
+$$kr-data //= (1: safe-sai)
+$$kr-data //= (2: safe-kid)
+]]></sourcecode>
         <t>
-Upon the first transmission of CR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that content key.
-Upon the first reception of CR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that content key.
-Any time after the first reception or transmission of CR step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
-After reception of CR step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
+Upon the first transmission of KR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that content key.
+Upon the first reception of KR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that content key.
+Any time after the first reception or transmission of KR step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
+After reception of KR step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
         </t>
       </section>
     </section>
     <section anchor="sec-data">
       <name>Data Item Types</name>
       <t>
-This section defines the initial set of data items which can be present as the data payload of a <xref target="sec-layers-msg">SAFE message</xref>.
+This section defines the initial set of data items which can be present in the payload of a <xref target="sec-layers-msg">SAFE message</xref>.
       </t>
       <t>
 Some types of data item allow the activity initiator to provide multiple independent proposals, from which the responder can either choose one proposal or create a new single proposal which narrows down from one provided by the initiator.
@@ -2090,24 +2118,8 @@ Each proposal <bcp14>SHALL</bcp14> take the form of a CBOR map.
 When multiple proposals are present, they <bcp14>SHALL</bcp14> take the form of a CBOR array of proposal maps.
       </t>
       <sourcecode type="cddl">
-safe-proposals = data-map / [+ data-map]
+safe-proposals = safe-map / [+ safe-map]
       </sourcecode>
-      <section anchor="sec-data-ete">
-        <name>Error Type Enumeration (ETE)</name>
-        <t>
-The Error Type Enumeration (ETE) data item is used by its sender to signal a failure to process a message or make progress in an activity.
-The ETE value <bcp14>SHALL</bcp14> be an integer limited to the inclusive range -32768 to 32767.
-        </t>
-        <t>
-These values are used in many activities to indicate a failure in decoding, processing, or consistency of received message contents.
-Well-known error values are non-negative and registered in <xref target="sec-iana-safe"/>.
-Private and experimental use error values are negative and not registered.
-        </t>
-        <sourcecode type="cddl">
-safe-ete = [+ safe-error]
-safe-error = int16
-</sourcecode>
-      </section>
       <section anchor="sec-data-cas">
         <name>Concurrent Activity Support (CAS)</name>
         <t>
@@ -2213,7 +2225,7 @@ safe-pks = COSE_Key  ; from [RFC 9052]
       <section anchor="sec-data-arn">
         <name>Additional Random Nonce (ARN)</name>
         <t>
-This data item provides a random nonce value from the sender to add entropy into the PRF used during <xref target="sec-act-sc">SA Creation</xref> and <xref target="sec-act-cc">CK Creation</xref> to generate content key data.
+This data item provides a random nonce value from the sender to add entropy into the PRF used during <xref target="sec-act-sc">SA Creation</xref> and <xref target="sec-act-kc">CK Creation</xref> to generate content key data.
 The data value <bcp14>SHALL</bcp14> be a byte string with a size in the inclusive range 1 to 256 bytes.
         </t>
         <sourcecode type="cddl">
@@ -2390,12 +2402,12 @@ PDU #1    #2    #3    #4    #5    #6    #7
      | (SC 0 --- 1 --- 2)    |     |     |
      |     | (SC 0 --- 1 --- 2)    |     |
      |     | (SC 0 --- 1 --- 2)    |     |
-     |     |     | (CC 0 --- 1)    |     |
-     |     |     | (CC 0 --- 1)    |     |
-     |     |     |     | (CC 0 --- 1)    |
-     |     |     |     | (CC 0 --- 1)    |
-     |     |     |     | (CC 0 --- 1)    |
-     |     |     |     |     | (CC 0 --- 1)
+     |     |     | (KC 0 --- 1)    |     |
+     |     |     | (KC 0 --- 1)    |     |
+     |     |     |     | (KC 0 --- 1)    |
+     |     |     |     | (KC 0 --- 1)    |
+     |     |     |     | (KC 0 --- 1)    |
+     |     |     |     |     | (KC 0 --- 1)
 
           =----- time ----->
 ]]></artwork>
@@ -2412,9 +2424,9 @@ PDU #1    #2    #3    #4    #5    #6    #7
           <artwork align="left" type="ascii-art"><![CDATA[
 PDU #1    #2    #3    #4    #5    #6    #7    #8    #9    #10   #11
      |     |     |     |     |     |     |     |     |     |     |
- (IA 0 --- 1 --- 2 --- 3)(SC 0 --- 1 --- 2)(CC 0 --- 1)(CC 0 --- 1)
-     | (CI 0 --- 1 --- 2)(SC 0 --- 1 --- 2)(CC 0 --- 1)
-     | (SC 0 --- 1 --- 2)(CC 0 --- 1)(CC 0 --- 1)(CC 0 --- 1)
+ (IA 0 --- 1 --- 2 --- 3)(SC 0 --- 1 --- 2)(KC 0 --- 1)(KC 0 --- 1)
+     | (CI 0 --- 1 --- 2)(SC 0 --- 1 --- 2)(KC 0 --- 1)
+     | (SC 0 --- 1 --- 2)(KC 0 --- 1)(KC 0 --- 1)(KC 0 --- 1)
 
           =----- time ----->
 ]]></artwork>
@@ -2467,8 +2479,8 @@ PDU #1    #2    #3    #4    #5    #6
 ]]></artwork>
         </figure>
         <t>
-Only after step 0 of the CI activity has been received, the responder for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-cc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
-Only after step 1 of the CI activity has been received, the initiator for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-cc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
+Only after step 0 of the CI activity has been received, the responder for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-kc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
+Only after step 1 of the CI activity has been received, the initiator for the activity <bcp14>SHOULD</bcp14> begin any number of needed <xref format="title" target="sec-act-kc"/> activities for the primary SA <xref format="title" target="sec-act-sc"/> activities to establish secondary SAs.
 The number of concurrent activities allowed to be started at each step is limited by the CAS limit for the receiving peer.
         </t>
         <figure>
@@ -2696,7 +2708,9 @@ When creating a new primary SA content key, the COSE key <bcp14>SHALL</bcp14> co
 Pseudocode used to explain this is shown in <xref target="fig-deriv-psa-keys"/>, where the named parameters are:
         </t>
         <dl>
-          <dt><tt>KID</tt>:</dt>
+          <dt><tt>TXI</tt></dt>
+          <dd>A boolean value indicating whether the initiator of the content key was the initiator for the parent SA, as CBOR <tt>true</tt> or <tt>false</tt>. This ensures that each key (TX or RX) store contains a distinct KID space.</dd>
+          <dt><tt>KID_CK</tt>:</dt>
           <dd>The <xref format="title" target="sec-data-kid"/> from the initiator as an encoded CBOR byte string.</dd>
           <dt><tt>ARN</tt>:</dt>
           <dd>The <xref format="title" target="sec-data-arn"/> from the initiator, or the empty byte string if no such data item was received, as an encoded CBOR byte string.</dd>
@@ -2710,7 +2724,7 @@ Pseudocode used to explain this is shown in <xref target="fig-deriv-psa-keys"/>,
         <figure anchor="fig-deriv-psa-keys">
           <name>SA Creation pseudocode</name>
           <sourcecode>
-context_ck1 = E(KID) | E(ARN)
+context_ck1 = E(TXI) | E(KID_CK) | E(ARN)
 
 SK_SA1   = SAFE_EXP(PRK_CK, E(1) | context_ck1, key_length)
 BIV_SA1 = SAFE_EXP(PRK_CK, E(2) | context_ck1, iv_length)
@@ -3834,27 +3848,27 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             </tr>
             <tr>
               <td>5</td>
-              <td>CK Prekey</td>
-              <td>CP</td>
-              <td><xref target="sec-act-cp"/> of [This specification]</td>
+              <td>Prekey Creation</td>
+              <td>PC</td>
+              <td><xref target="sec-act-pc"/> of [This specification]</td>
             </tr>
             <tr>
               <td>6</td>
-              <td>CK Creation</td>
+              <td>Key Creation</td>
               <td>SC</td>
-              <td><xref target="sec-act-cc"/> of [This specification]</td>
+              <td><xref target="sec-act-kc"/> of [This specification]</td>
             </tr>
             <tr>
               <td>7</td>
-              <td>CK Discard</td>
-              <td>CD</td>
-              <td><xref target="sec-act-cd"/> of [This specification]</td>
+              <td>Key Discard</td>
+              <td>KD</td>
+              <td><xref target="sec-act-kd"/> of [This specification]</td>
             </tr>
             <tr>
               <td>8</td>
               <td>CK Reject</td>
               <td>CR</td>
-              <td><xref target="sec-act-cr"/> of [This specification]</td>
+              <td><xref target="sec-act-kr"/> of [This specification]</td>
             </tr>
             <tr>
               <td>9 to 32767</td>
@@ -3890,13 +3904,6 @@ This registry includes only well-known data item types; private use labels can b
               <td><em>Reserved for private use</em></td>
               <td></td>
               <td>[This specification]</td>
-            </tr>
-            <tr>
-              <td><em>all types</em></td>
-              <td>0</td>
-              <td>Error Type Enumeration</td>
-              <td>ETE</td>
-              <td><xref target="sec-data-ete"/> of [This specification]</td>
             </tr>
             <tr>
               <td>IA</td>
@@ -4172,7 +4179,7 @@ These entries are distinct and separate from the "EDHOC Error Codes" registry of
     <section>
       <name>Example Sequencing</name>
       <t>
-This section contains a minimal example of two nodes initializing a primary SA and two secondary SAs with overlapping activities using pipelined messaging.
+This section contains a minimal example of two nodes initializing a primary SA and one secondary SA with overlapping activities using pipelined messaging.
 The EDHOC messages in the IA activity are taken from the example in <xref section="2" target="RFC9529"/> to avoid duplicating EDHOC example logic here.
 This example does not include any PDU losses so no retransmission is needed.
       </t>
@@ -4194,8 +4201,8 @@ PDU #1    #2    #3    #4    #5
 The encoded PDU #1 (initiator-to-responder) is the following byte string:
       </t>
       <sourcecode type="cborhex">
-01f6f50006582031f82c7b5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1c0
-701e237f042d
+01f6f6f50006582031f82c7b5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1
+c0701e237f042d
       </sourcecode>
       <t keepWithNext="true">
 The contents of that PDU are following CBOR sequence:
@@ -4203,6 +4210,7 @@ The contents of that PDU are following CBOR sequence:
       <sourcecode type="cborseq">
 1, / version /
 null, / partial-iv /
+null, / psa-kid /
 true, / rx-sai /
 / message_1: /
 0, / method /
@@ -4218,10 +4226,11 @@ h'31f82c7b5b9cbbf0f194d913cc12ef1532d328ef32632a48
 The encoded PDU #2 (responder-to-initiator) is following byte string:
       </t>
       <sourcecode type="cborhex">
-01f62d5880dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9
-b29d1c9e2115f057ff0687a41a21a1d7fc4553061357fe93dbef391c83e18a27b29c
-e24e44a45916fdebe9c5a505abdec132750551154966a67eed27236c093e2774814f
-11c5affadf8c0cd96e31fef7deda3398136d3e79419efd86efe646e1606b77
+01f6f62d5883dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480
+b9b29d1c26c7c32e544dbc92288007d943689e6d03994b318a63da154aaa242318bd
+82713c3e0f3468febdebe25d13723ea6553bb48f7005c1eaba68c83550c86cdc69b2
+26fd064affca66c35a1e58bc635133f9f248fed15e42baceb0d0ca8727dc1b612f92
+e1
       </sourcecode>
       <t>
 That PDU has the following decoded header, eliding the ciphertext message.
@@ -4229,16 +4238,17 @@ That PDU has the following decoded header, eliding the ciphertext message.
       <sourcecode type="cborseq">
 1, / version /
 null, / partial-iv /
+null, / psa-kid /
 -14 / rx-sai from C_I /
-/ message_2: h'dc88...6b77' /
+/ message_2: h'dc88...92e1' /
       </sourcecode>
       <t>
 Derived from the shared secrets, the PLAINTEXT_2 contents are the following:
       </t>
       <sourcecode type="cborhex">
-4118A11822822E4879F2A41B510C1F9B58407934E54041AE5ACB7C68DE7ED477D947
-E4214E84659D99FCD49C4B25033DD92AF50DE0570BC27B72039CEB2F4A4F8F05082F
-F9739A823C25634FE42BB306F296364F010001A30119040002820102038103
+4118a11822822e4879f2a41b510c1f9b58407934e54041ae5acb7c68de7ed477d947
+e4214e84659d99fcd49c4b25033dd92af50de0570bc27b72039ceb2f4a4f8f05082f
+f9739a823c25634fe42bb306f296364f010001a30119040002820102038103
       </sourcecode>
       <t>
 That plaintext has the following decoded items.
@@ -4246,8 +4256,8 @@ That plaintext has the following decoded items.
       <sourcecode type="cborseq">
 h'18', / C_R /
 {34: [-15, h'79F2A41B510C1F9B']}, / ID_CRED_R with following sig. /
-h'A9CAAE6BB615B3C50D774AFA0B6297AA3CCDBED1A03A34614DEE8A62216F685DC9
-  ED1C8DE7291E2C571E1E9DAD39B350869CC7B2658514EB7881E8B03D5C9D89',
+h'7934E54041AE5ACB7C68DE7ED477D947E4214E84659D99FCD49C4B25033DD92AF5
+0DE0570BC27B72039CEB2F4A4F8F05082FF9739A823C25634FE42BB306F296',
 -23, / EAD label with following value /
 h'010001A30119040002820102038103'
       </sourcecode>
@@ -4271,12 +4281,12 @@ The embedded EAD_2 contains the following SAFE message:
 The encoded PDU #3 is following byte string:
       </t>
       <sourcecode type="cborhex">
-01f6411858c1e418256972ed10356c2cadc3e72dd86c16e830590972a7fa238c92b3
-0c7cb6a030397061de4327b02b5aae7c0e1c6de2d67bd7627b33b8cb8e9bb8303aca
-53143aacd8713413becc1a3ad2ad7ac3bee1b56cb576637738787106a415c41ab3c4
-b70fe87782994bb93d25c2a7565255948267637511364b2236ae8ddbbfb4321246fc
-38ba317216893f9afe59b85a4301e871944d8e3afb7de0278bf2cf7c161ce6fe2ff6
-b2e6d8f5666d5ae4c555f07ee534293f4dc85d282bdd35e2676b126eee
+01f6f6411858c1e418256972ed10356c2cadc3e72dd86cd6e503c6a4c8f09b5aebc1
+f232466ad983b3fe619971cda343c5e1cea13e8b6f34599bf9fa9f6139d79ad96457
+d6db7428b236c365bcc635a4dc65689d173ac7b56cb576637738787106a415c41ab3
+c5bf796dc234ed97760cf1f9bd31084d7b3c7652a398d878481de0fa7d89c6741108
+0017913c5ae0e3c18974c0508222aa937641f3b85ad49460874d74d6a96019e6fe2f
+f6b2e6d8f5666d5ae4c555f07ee5a4176ee5be3b84c715a9e9041c178ba5
       </sourcecode>
       <t>
 That PDU has the following decoded header, eliding the ciphertext message.
@@ -4284,18 +4294,19 @@ That PDU has the following decoded header, eliding the ciphertext message.
       <sourcecode type="cborseq">
 1, / version /
 null, / partial-iv /
+null, / psa-kid /
 h'18' / rx-sai from C_I /
-/ message_3: h'e418...6eee' /
+/ message_3: h'e418...8ba5' /
       </sourcecode>
       <t>
 Derived from the shared secrets, the PLAINTEXT_3 contents are the following:
       </t>
       <sourcecode type="cborhex">
-A11822822E48C24AB2FD7643C79F5840A6F33C8F1FED68F30F83261652D193DC1B29
-A5B40A53AA6D695466F8E473B74548914C293F8EB127C71813993338E6573F90A60A
-BB6F3484FE4172056B645A0A36584D010002A80146235A91D189EA035056B44D9A0F
-87538A24CA8EBE49D4FD51040305A10101090106F607F602582031F82C7B5B9CBBF0
-F194D913CC12EF1532D328EF32632A4881A1C0701E237F04364F010101A301190400
+a11822822e48c24ab2fd7643c79f584066fe0f10b2573f9276e475576ceb4fa5a8a3
+2bb44d61407e01cb294a4b5151c8aab300b2be2268d59e1972cd5e246e372d8e48b8
+eac04c7d40a7c5c08cb0de2c36584d010002a80146235a91d189ea02582031f82c7b
+5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1c0701e237f04035056b44d9a
+0f87538a24ca8ebe49d4fd51040305a1010106f607f60901364f010101a301190400
 02820102038103
       </sourcecode>
       <t>
@@ -4303,12 +4314,12 @@ That plaintext has the following decoded items.
       </t>
       <sourcecode type="cborseq">
 {34: [-15, h'C24AB2FD7643C79F']}, / ID_CRED_I with following sig. /
-h'A6F33C8F1FED68F30F83261652D193DC1B29A5B40A53AA6D695466F8E473B74548
-  914C293F8EB127C71813993338E6573F90A60ABB6F3484FE4172056B645A0A',
+h'66FE0F10B2573F9276E475576CEB4FA5A8A32BB44D61407E01CB294A4B5151C8AA
+B300B2BE2268D59E1972CD5E246E372D8E48B8EAC04C7D40A7C5C08CB0DE2C',
 -23, / EAD label with following value /
-h'010002A80146235A91D189EA035056B44D9A0F87538A24CA8EBE49D4FD51040305
-  A10101090106F607F602582031F82C7B5B9CBBF0F194D913CC12EF1532D328EF32
-  632A4881A1C0701E237F04',
+h'010002A80146235A91D189EA02582031F82C7B5B9CBBF0F194D913CC12EF1532D3
+28EF32632A4881A1C0701E237F04035056B44D9A0F87538A24CA8EBE49D4FD510403
+05A1010106F607F60901',
 -23, / EAD label with following value /
 h'010101A30119040002820102038103'
       </sourcecode>

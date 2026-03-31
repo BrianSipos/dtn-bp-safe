@@ -4314,12 +4314,12 @@ The embedded EAD_2 contains the following SAFE message:
 The encoded PDU #3 is following byte string:
       </t>
       <sourcecode type="cborhex">
-01f6f6411858c1e418256972ed10356c2cadc3e72dd86cd6e503c6a4c8f09b5aebc1
-f232466ad983b3fe619971cda343c5e1cea13e8b6f34599bf9fa9f6139d79ad96457
-d6db7428b236c365bcc635a4dc65689d173ac7b56cb576637738787106a415c41ab3
-c5bf796dc234ed97760cf1f9bd31084d7b3c7652a398d878481de0fa7d89c6741108
-0017913c5ae0e3c18974c0508222aa937641f3b85ad49460874d74d6a96019e6fe2f
-f6b2e6d8f5666d5ae4c555f07ee5a4176ee5be3b84c715a9e9041c178ba5
+01f6f6411858b3e418256972ed10356c2cadc3e72dd86cddf060b8b0b4e2582de839
+c195fc9693006301e91e61fbfaa62e9d8e9580508d833c8338b7e50c01c867860af1
+91f44abcde81edb037188e5efe048f9fa13eb8b56cc77663763a787106a415c41ab3
+c2655afd3b19903aed410809236a1a80625162617c32374a26b5a87bd2c814687421
+b0595b3964a633eac4a9f43d9c51459ceb8aedbd58d096609f4f82d3dd681ad3302d
+d4c875442ef615670d5aa9754f5b602c
       </sourcecode>
       <t>
 That PDU has the following decoded header, eliding the ciphertext message.
@@ -4329,17 +4329,17 @@ That PDU has the following decoded header, eliding the ciphertext message.
 null, / partial-iv /
 null, / psa-kid /
 h'18' / rx-sai from C_I /
-/ message_3: h'e418...8ba5' /
+/ message_3: h'e418...602c' /
       </sourcecode>
       <t>
 Derived from the shared secrets, the PLAINTEXT_3 contents are the following:
       </t>
       <sourcecode type="cborhex">
-a11822822e48c24ab2fd7643c79f58406a0e076f87cbe4ad82a6f44cda01b4006b4c
-2e10ab9e7617111e9e2883b5b75baff343dabfb4153d72f400726ad96e798f688393
-e772b28c225919b73c54d810365845010003aa0146235a91d189ea058203a1010106
-f607f609010a8201010b8201010c8200000d8200000e81a202463031303130310b50
-56b44d9a0f87538a24ca8ebe49d4fd51364f010101a30119040002820102038103
+a11822822e48c24ab2fd7643c79f58406deb6c6ea62b2d5101e78d64cb51b3ef2b73
+d43cca717627e420550a7fef8a2a1dd61873f35805ed81e42da3f8634109b9e2ff96
+3f4b92c6ba85a4278e06da5336583f010003aa0146235a91d189ea058203a1010106
+f607f609010a8201010b8201010c8200000d8200000e81a2024656b44d9a538a0b4a
+24ca8ebe49d4fd514649364f010101a30119040002820102038103
       </sourcecode>
       <t>
 That plaintext has the following decoded items.
@@ -4350,8 +4350,7 @@ h'6A0E076F87CBE4AD82A6F44CDA01B4006B4C2E10AB9E7617111E9E2883B5B75BAF
 F343DABFB4153D72F400726AD96E798F688393E772B28C225919B73C54D810',
 -23, / EAD label with following value /
 h'010003AA0146235A91D189EA058203A1010106F607F609010A8201010B8201010C
-8200000D8200000E81A202463031303130310B5056B44D9A0F87538A24CA8EBE49D4
-FD51',
+8200000D8200000E81A2024656B44D9A538A0B4A24CA8EBE49D4FD514649',
 -23, / EAD label with following value /
 h'010101A30119040002820102038103'
       </sourcecode>
@@ -4379,8 +4378,8 @@ The embedded EAD_3 contains the following SAFE messages:
     13: [0, 0], / TX prekey depth range /
     14: [ / initial content keys: /
         {
-            2: h'303130313031', / KID /
-            11: h'56B44D9A0F87538A24CA8EBE49D4FD51' / ARN /
+            2: h'56B44D9A538A', / KID /
+            11: h'24CA8EBE49D4FD514649' / ARN /
         }
     ]
 }
@@ -4402,9 +4401,9 @@ The embedded EAD_3 contains the following SAFE messages:
 The encoded PDU #4 is following byte string:
         </t>
         <sourcecode type="cborhex">
-01f6f62d585c7223b212149461d3bf663624088f819b1f81e29dad915cd68a08ab72
-96a0ee02ae05310bad0a1a85489a5c18cb8fa15d7f758ee696be04610391966ba03b
-de7c51db54ce7a2e434ef51539bd64de19944fbf552fa6aaf583cb91fe66
+01f6f62d5857b9d48b055a4c2cf0d4e26bf0963dd8b76fa55d31f525eb2e8dc075e3
+d993b12ac3b0f63339f6772175d1c1148c59badb8b31a4eb33f71d89b2d875b67e5c
+48103d1eb7f36131bd833bd22dd81aca5be811067612e6209b
         </sourcecode>
         <t>
 That PDU has the following decoded header, eliding the ciphertext message.
@@ -4414,40 +4413,40 @@ That PDU has the following decoded header, eliding the ciphertext message.
 null, / partial-iv /
 null, / psa-kid /
 -14 / rx-sai from C_I /
-/ message_3: h'7223...fe66' /
+/ message_3: h'b9d4...209b' /
         </sourcecode>
         <t>
 Derived from the shared secrets, the PLAINTEXT_4 contents are the following:
         </t>
         <sourcecode type="cborhex">
-36420102365845010103aa0146a8c046494ebd058203a1010106f607f609010a8201
-010b8201010c8200000d8200000e81a202463031303130310b5043184c4d9f379d2e
-b35fd2f2f11ae27b
+364301020136583f010103aa014673134ebd4c4d058203a1010106f607f609010a82
+01010b8201010c8200000d8200000e81a202469f379d2ed2f20b4af11ae27bf90480
+99170c
         </sourcecode>
         <t>
 That plaintext has the following decoded items.
         </t>
         <sourcecode type="cborseq">
 -23, / EAD label with following value /
-h'0102',
+h'010201',
 -23, / EAD label with following value /
-h'010103AA0146A8C046494EBD058203A1010106F607F609010A8201010B8201010C
-8200000D8200000E81A202463031303130310B5043184C4D9F379D2EB35FD2F2F11A
-E27B'
+h'010103aa014673134ebd4c4d058203a1010106f607f609010a8201010b8201010c
+8200000d8200000e81a202469f379d2ed2f20b4af11ae27bf9048099170c'
         </sourcecode>
         <t>
 The embedded EAD_4 contains the following SAFE messages:
         </t>
         <sourcecode type="cborseq">
 1, / act. index /
-2 / act. step /
+2, / act. step /
+1 / act. type: CI /
         </sourcecode>
         <sourcecode type="cborseq">
 1, / act. index /
 1, / act. step /
 3, / act. type: SC /
 {
-    1: h'A8C046494EBD', / local SAI bytes /
+    1: h'73134EBD4C4D', / local SAI bytes /
     5: [ / KUS: /
         3, / CTX: COSE (3) /
         {
@@ -4463,8 +4462,8 @@ The embedded EAD_4 contains the following SAFE messages:
     13: [0, 0], / TX prekey depth range /
     14: [ / initial content keys: /
         {
-            2: h'303130313031', / KID /
-            11: h'43184C4D9F379D2EB35FD2F2F11AE27B' / ARN /
+            2: h'9F379D2ED2F2', / KID /
+            11: h'F11AE27BF9048099170C' / ARN /
         }
     ]
 }
@@ -4476,7 +4475,7 @@ The embedded EAD_4 contains the following SAFE messages:
 The encoded PDU #5 is following byte string:
         </t>
         <sourcecode type="cborhex">
-0141014041185318b3a5535ff6d10d0bfb77daaa9f54179f1ed5
+01410140411854e318c7cb3e935ae4f4f4df3138b0bb0a68e46b11
         </sourcecode>
         <t>
 That PDU has the following decoded header, eliding the ciphertext message.
@@ -4486,26 +4485,27 @@ That PDU has the following decoded header, eliding the ciphertext message.
 h'01', / partial-iv /
 h'', / psa-kid /
 h'18' / rx-sai from C_R /
-/ message_3: h'18b3...1ed5' /
+/ message_3: h'e318...6b11' /
         </sourcecode>
         <t>
 Derived from the shared secrets, the PLAINTEXT contents are the following:
         </t>
         <sourcecode type="cborhex">
-420102
+43010203
         </sourcecode>
         <t>
 That plaintext has the following decoded items.
         </t>
         <sourcecode type="cborseq">
-h'0102'
+h'010203'
         </sourcecode>
         <t>
 The embedded byte strings contain the following SAFE messages:
         </t>
         <sourcecode type="cborseq">
 1, / act. index /
-2 / act. step /
+2, / act. step /
+3 / act. type: SC /
         </sourcecode>
       </section>
     </section>

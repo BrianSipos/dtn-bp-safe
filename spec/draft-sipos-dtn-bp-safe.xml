@@ -1315,15 +1315,15 @@ The interpretation of each item (label and data) of the payload map depends on t
           <t>
 This is indicated by the following CDDL, which is also used for generic data maps within SAFE messages.
           </t>
-          <sourcecode type="cddl">
+          <sourcecode type="cddl"><![CDATA[
 safe-map = {
-    * safe-label =&gt; safe-value,
+    * safe-label => safe-value,
 }
 ; Generic map label
 safe-label = int16
 ; Generic map value
 safe-value = any
-</sourcecode>
+]]></sourcecode>
         </section>
         <section anchor="sec-layers-msg-error">
           <name>Error Indication</name>
@@ -1828,6 +1828,10 @@ But for more complex cases, the intersection needs to be represented as a logica
               <td>13</td>
               <td>A <xref format="title" target="sec-data-kdr"/> for TX content prekeys supported in the secondary SA. This range <bcp14>MAY</bcp14> have an upper limit of zero to indicate FS will never be allowed by the sending entity.</td>
             </tr>
+            <tr>
+              <td>14</td>
+              <td>An <xref format="title" target="sec-data-ick"/> from the sender's side. Each entity <bcp14>MAY</bcp14> include this item to indicate initial TX content keys created along with the new SA.</td>
+            </tr>
           </tbody>
         </table>
         <sourcecode type="cddl"><![CDATA[
@@ -1852,6 +1856,7 @@ $$sc-data //= (10: key-depth-range)
 $$sc-data //= (11: key-depth-range)
 $$sc-data //= (12: key-depth-range)
 $$sc-data //= (13: key-depth-range)
+$$sc-data //= (14: safe-ick)
 ]]></sourcecode>
         <t>
 Upon the first reception or transmission of SC step 1, the entity <bcp14>SHALL</bcp14> create a secondary SA based on the data derived in <xref target="sec-deriv-prk_sa"/> with no initial content keys or prekeys.
@@ -1990,21 +1995,26 @@ The sequence of steps and their data for this activity are the following:
             </tr>
             <tr>
               <td>11</td>
-              <td>An optional random nonce per <xref target="sec-data-arn"/></td>
+              <td>An optional random nonce per <xref target="sec-data-arn"/> used to add entropy to the new key.</td>
+            </tr>
+            <tr>
+              <td>12</td>
+              <td>A <xref format="title" target="sec-data-nti"/> used as the content key validity time interval.</td>
             </tr>
           </tbody>
         </table>
         <sourcecode type="cddl"><![CDATA[
-$safe-msg /= safe-act-type<6, ci-data>
+$safe-msg /= safe-act-type<6, kc-data>
 kc-data = {* $$kc-data } .within safe-map
 
 ; Identity of the new CK from the initiator
 $$kc-data //= (1: safe-sai)
 $$kc-data //= (2: safe-kid)
 
-; Optional PRF parameters
+; Creation parameters
 $$kc-data //= (10: safe-kid)
 $$kc-data //= (11: safe-arn)
+$$kc-data //= (12: safe-nti)
 ]]></sourcecode>
         <t>
 Upon the first reception or transmission of KC step 0, the entity <bcp14>SHALL</bcp14> correlate the responder SAI of a Primary SA or Secondary SA and create a new content key within it based on the derived secrets defined in <xref target="sec-deriv-psa-keys"/> or <xref target="sec-deriv-ssa-keys"/> respectively.
@@ -2220,6 +2230,21 @@ A KID <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC conn
 safe-kid = (bstr .size (0..16)) / (-24..23)
 </sourcecode>
       </section>
+      <section anchor="sec-data-ick">
+        <name>Initial Content Key (ICK)</name>
+        <t>
+This data item allows creating non-FS/PCS content keys on a new SA during its creation, which saves activity sequencing for those keys.
+The data value <bcp14>SHALL</bcp14> be a CBOR array of items, each being a CBOR map interpreted according to the <xref format="title" target="sec-act-kc"/> activity.
+For this purpose, the SAI <bcp14>SHALL</bcp14> be omitted from the map for each content key as the parent SA Creation activity already has an explicit SAI for the sender.
+        </t>
+        <sourcecode type="cddl">
+safe-ick = [+ kc-data]
+</sourcecode>
+        <t>
+The processing of each item of the array <bcp14>SHALL</bcp14> be interpreted identically to step 0 of the KC activity from <xref target="sec-act-kc"/>.
+Any failure during processing or creation of each content key <bcp14>SHALL NOT</bcp14> affect the processing or creation of any other key from the same data item.
+        </t>
+      </section>
       <section anchor="sec-data-pks">
         <name>Public Key Structure (PKS)</name>
         <t>
@@ -2251,13 +2276,13 @@ Based on the discussion in <xref target="sec-intro-usecases"/> this document def
 The behavior of these modes is defined in <xref target="sec-sa-use-bpsec"/>.
 Future specifications can add additional mode code points with different behavior.
         </t>
-        <sourcecode type="cddl">
+        <sourcecode type="cddl"><![CDATA[
 safe-sms = secondary-sa-mode .within int16
-secondary-sa-mode = &amp;(
+secondary-sa-mode = &(
     end-to-end: 1,
     transport: 2,
 )
-        </sourcecode>
+]]></sourcecode>
       </section>
       <section anchor="sec-data-nti">
         <name>Node Time Interval (NTI)</name>
@@ -2321,7 +2346,7 @@ The type of security service being sourced by the forwarding entity and accepted
 This value is either integrity (1) or confidentiality (2), as defined in <xref target="RFC9172"/>.
           </li>
         </ol>
-        <sourcecode type="cddl">
+        <sourcecode type="cddl"><![CDATA[
 safe-sos = [
     target-block-types: [+ bpv7-block-type],
     service: bpsec-service,
@@ -2329,11 +2354,11 @@ safe-sos = [
 ; Type consistent with RFC 9171
 bpv7-block-type = uint
 ; Services available in RFC 9172
-bpsec-service = &amp;(
+bpsec-service = &(
     integrity: 1,
     confidentiality: 2,
 )
-        </sourcecode>
+]]></sourcecode>
       </section>
       <section anchor="sec-data-kus">
         <name>Key Use Selectors (KUS)</name>
@@ -4310,24 +4335,23 @@ h'18' / rx-sai from C_I /
 Derived from the shared secrets, the PLAINTEXT_3 contents are the following:
       </t>
       <sourcecode type="cborhex">
-a11822822e48c24ab2fd7643c79f584066fe0f10b2573f9276e475576ceb4fa5a8a3
-2bb44d61407e01cb294a4b5151c8aab300b2be2268d59e1972cd5e246e372d8e48b8
-eac04c7d40a7c5c08cb0de2c36584d010002a80146235a91d189ea02582031f82c7b
-5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1c0701e237f04035056b44d9a
-0f87538a24ca8ebe49d4fd51040305a1010106f607f60901364f010101a301190400
-02820102038103
+a11822822e48c24ab2fd7643c79f58406a0e076f87cbe4ad82a6f44cda01b4006b4c
+2e10ab9e7617111e9e2883b5b75baff343dabfb4153d72f400726ad96e798f688393
+e772b28c225919b73c54d810365845010003aa0146235a91d189ea058203a1010106
+f607f609010a8201010b8201010c8200000d8200000e81a202463031303130310b50
+56b44d9a0f87538a24ca8ebe49d4fd51364f010101a30119040002820102038103
       </sourcecode>
       <t>
 That plaintext has the following decoded items.
       </t>
       <sourcecode type="cborseq">
 {34: [-15, h'C24AB2FD7643C79F']}, / ID_CRED_I with following sig. /
-h'66FE0F10B2573F9276E475576CEB4FA5A8A32BB44D61407E01CB294A4B5151C8AA
-B300B2BE2268D59E1972CD5E246E372D8E48B8EAC04C7D40A7C5C08CB0DE2C',
+h'6A0E076F87CBE4AD82A6F44CDA01B4006B4C2E10AB9E7617111E9E2883B5B75BAF
+F343DABFB4153D72F400726AD96E798F688393E772B28C225919B73C54D810',
 -23, / EAD label with following value /
-h'010002A80146235A91D189EA02582031F82C7B5B9CBBF0F194D913CC12EF1532D3
-28EF32632A4881A1C0701E237F04035056B44D9A0F87538A24CA8EBE49D4FD510403
-05A1010106F607F60901',
+h'010003AA0146235A91D189EA058203A1010106F607F609010A8201010B8201010C
+8200000D8200000E81A202463031303130310B5056B44D9A0F87538A24CA8EBE49D4
+FD51',
 -23, / EAD label with following value /
 h'010101A30119040002820102038103'
       </sourcecode>
@@ -4337,19 +4361,28 @@ The embedded EAD_3 contains the following SAFE messages:
       <sourcecode type="cborseq">
 1, / act. index /
 0, / act. step /
-2, / act. type: SC /
+3, / act. type: SC /
 {
-    1: h'235A91D189EA', / local SAI bytes /
-    3: h'56B44D9A0F87538A24CA8EBE49D4FD51', / ARN bytes /
-    4: 3, / CTX: COSE (3) /
-    5: { / KUS: /
-      1: 1 / alg: A128GCM (1) /
-    }, 
-    9: 1, / SMS: end-to-end (1) /
+    1: h'235A91D189EA', / sender SAI bytes /
+    5: [ / KUS: /
+        3, / CTX: COSE (3) /
+        {
+            1: 1 / alg: A128GCM (1) /
+        }
+    ],
     6: null, / TSI: still TBD /
     7: null, / TSR: still TBD /
-    2: h'31F82C7B5B9CBBF0F194D913CC12EF1532D328EF32632A4881A1C0701E2
-         37F04' / AKE bytes /
+    9: 1, / SMS: end-to-end (1) /
+    10: [1, 1], / RX key depth range /
+    11: [1, 1], / TX key depth range /
+    12: [0, 0], / RX prekey depth range /
+    13: [0, 0], / TX prekey depth range /
+    14: [ / initial content keys: /
+        {
+            2: h'303130313031', / KID /
+            11: h'56B44D9A0F87538A24CA8EBE49D4FD51' / ARN /
+        }
+    ]
 }
       </sourcecode>
       <sourcecode type="cborseq">
@@ -4369,10 +4402,9 @@ The embedded EAD_3 contains the following SAFE messages:
 The encoded PDU #4 is following byte string:
         </t>
         <sourcecode type="cborhex">
-01F62D586492459A97A617FE0176E1040FB1E98A640FBDF104E4839EB576F32EF07C
-F283B9C8FF4AC2B5B3DC72F15A5CAEC383A366A8310D97E369E1696D4D43BC9BAA99
-E63E750D29344A95D9C703B21B7AE796F36F82FDF8798F5428AD8057C2D197B7F6DE
-7ADEB6
+01f6f62d585c7223b212149461d3bf663624088f819b1f81e29dad915cd68a08ab72
+96a0ee02ae05310bad0a1a85489a5c18cb8fa15d7f758ee696be04610391966ba03b
+de7c51db54ce7a2e434ef51539bd64de19944fbf552fa6aaf583cb91fe66
         </sourcecode>
         <t>
 That PDU has the following decoded header, eliding the ciphertext message.
@@ -4380,16 +4412,17 @@ That PDU has the following decoded header, eliding the ciphertext message.
         <sourcecode type="cborseq">
 1, / version /
 null, / partial-iv /
+null, / psa-kid /
 -14 / rx-sai from C_I /
-/ message_3: h'9245...DEB6' /
+/ message_3: h'7223...fe66' /
         </sourcecode>
         <t>
 Derived from the shared secrets, the PLAINTEXT_4 contents are the following:
         </t>
         <sourcecode type="cborhex">
-3642010236584d010102a80146a8c046494ebd035043184c4d9f379d2eb35fd2f2f1
-1ae27b040305a10101090106f607f6025820dc88d2d51da5ed67fc4616356bc8ca74
-ef9ebe8b387e623a360ba480b9b29d1c
+36420102365845010103aa0146a8c046494ebd058203a1010106f607f609010a8201
+010b8201010c8200000d8200000e81a202463031303130310b5043184c4d9f379d2e
+b35fd2f2f11ae27b
         </sourcecode>
         <t>
 That plaintext has the following decoded items.
@@ -4398,9 +4431,9 @@ That plaintext has the following decoded items.
 -23, / EAD label with following value /
 h'0102',
 -23, / EAD label with following value /
-h'010102A80146A8C046494EBD035043184C4D9F379D2EB35FD2F2F11AE27B040305
-  A10101090106F607F6025820DC88D2D51DA5ED67FC4616356BC8CA74EF9EBE8B38
-  7E623A360BA480B9B29D1C'
+h'010103AA0146A8C046494EBD058203A1010106F607F609010A8201010B8201010C
+8200000D8200000E81A202463031303130310B5043184C4D9F379D2EB35FD2F2F11A
+E27B'
         </sourcecode>
         <t>
 The embedded EAD_4 contains the following SAFE messages:
@@ -4412,19 +4445,28 @@ The embedded EAD_4 contains the following SAFE messages:
         <sourcecode type="cborseq">
 1, / act. index /
 1, / act. step /
-2, / act. type: SC /
+3, / act. type: SC /
 {
     1: h'A8C046494EBD', / local SAI bytes /
-    3: h'43184C4D9F379D2EB35FD2F2F11AE27B', / ARN bytes /
-    4: 3, / CTX: COSE (3) /
-    5: { / KUS: /
-        1: 1 / alg: A128GCM (1) /
-    },
-    9: 1, / SMS: end-to-end (1) /
+    5: [ / KUS: /
+        3, / CTX: COSE (3) /
+        {
+            1: 1 / alg: A128GCM (1) /
+        }
+    ],
     6: null, / TSI: still TBD /
     7: null, / TSR: still TBD /
-    2: h'DC88D2D51DA5ED67FC4616356BC8CA74EF9EBE8B387E623A360BA480B9B
-         29D1C' / AKE bytes /
+    9: 1, / SMS: end-to-end (1) /
+    10: [1, 1], / RX key depth range /
+    11: [1, 1], / TX key depth range /
+    12: [0, 0], / RX prekey depth range /
+    13: [0, 0], / TX prekey depth range /
+    14: [ / initial content keys: /
+        {
+            2: h'303130313031', / KID /
+            11: h'43184C4D9F379D2EB35FD2F2F11AE27B' / ARN /
+        }
+    ]
 }
         </sourcecode>
       </section>
@@ -4434,7 +4476,7 @@ The embedded EAD_4 contains the following SAFE messages:
 The encoded PDU #5 is following byte string:
         </t>
         <sourcecode type="cborhex">
-01410141185306684BF319BBE5B2237EF71606DB2714E0F992
+0141014041185318b3a5535ff6d10d0bfb77daaa9f54179f1ed5
         </sourcecode>
         <t>
 That PDU has the following decoded header, eliding the ciphertext message.
@@ -4442,8 +4484,9 @@ That PDU has the following decoded header, eliding the ciphertext message.
         <sourcecode type="cborseq">
 1, / version /
 h'01', / partial-iv /
+h'', / psa-kid /
 h'18' / rx-sai from C_R /
-/ message_3: h'0668...F992' /
+/ message_3: h'18b3...1ed5' /
         </sourcecode>
         <t>
 Derived from the shared secrets, the PLAINTEXT contents are the following:
@@ -4469,7 +4512,7 @@ The embedded byte strings contain the following SAFE messages:
     <section anchor="sec-doc-ack" numbered="false">
       <name>Acknowledgments</name>
       <t>
-Thanks go to Leonardo Babun and Cherita Corbett of JHU/APL for pre-draft review and editing of this document.
+Thanks go to Leonardo Babun, Cherita Corbett, and Joshua Stone of JHU/APL for pre-draft review and editing of this document.
       </t>
     </section>
     <section removeInRFC="true" numbered="false">

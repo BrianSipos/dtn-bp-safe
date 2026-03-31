@@ -1830,7 +1830,7 @@ But for more complex cases, the intersection needs to be represented as a logica
             </tr>
             <tr>
               <td>14</td>
-              <td>An <xref format="title" target="sec-data-ick"/> from the sender's side. Each entity <bcp14>MAY</bcp14> include this item to indicate initial TX content keys created along with the new SA.</td>
+              <td>An <xref format="title" target="sec-data-ick"/> item from the sender's side. Each entity <bcp14>MAY</bcp14> include this item to indicate initial TX content keys created along with the new SA.</td>
             </tr>
           </tbody>
         </table>
@@ -1906,63 +1906,10 @@ Upon the first reception or transmission of ST step 1, the entity <bcp14>SHALL</
 Any time after the first reception or transmission of ST step 1, either entity <bcp14>SHALL NOT</bcp14> refer to the removed SA from any other activities.
         </t>
       </section>
-      <section anchor="sec-act-pc">
-        <name>Prekey Creation (PC)</name>
-        <t>
-This activity is used to preemptively share a one-time-use public key which can be used to add forward secrecy to later-derived content keys in the <xref format="title" target="sec-act-kc"/> activity.
-The recipient of the CP activity will be the initiator of the later CC activity.
-The Prekey (PC) activity <bcp14>SHALL</bcp14> be identified by activity type 5.
-        </t>
-        <t keepWithNext="true">
-The sequence of steps and their data for this activity are the following:
-        </t>
-        <ul>
-          <li>Step 0: The payload is a map containing data items as defined below.</li>
-          <li>Step 2: No payload, message is acknowledgement.</li>
-        </ul>
-        <table align="center">
-          <name>Prekey Creation Data Items</name>
-          <thead>
-            <tr>
-              <th>Label</th>
-              <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
-            </tr>
-            <tr>
-              <td>3</td>
-              <td>A <xref format="title" target="sec-data-nti"/> used as the prekey validity time interval.</td>
-            </tr>
-            <tr>
-              <td>4</td>
-              <td>The sender's one-time-use public prekey, as defined in <xref target="sec-data-pks"/>. This public key <bcp14>SHALL</bcp14> contain a kid (2) parameter used to identify the prekey. This public key <bcp14>SHALL</bcp14> contain an alg (1) parameter matching the "EDHOC key exchange algorithm" from the EDHOC cipher suite.</td>
-            </tr>
-          </tbody>
-        </table>
-        <sourcecode type="cddl"><![CDATA[
-$safe-msg /= safe-act-type<5, pc-data>
-pc-data = {* $$pc-data } .within safe-map
-
-; Identifiers for the responder
-$$pc-data //= (1: safe-sai)
-$$pc-data //= (2: safe-kid)
-
-$$pc-data //= (3: safe-nti)
-$$pc-data //= (4: safe-pks)
-]]></sourcecode>
-        <t>
-Upon the first reception of PC step 0, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and record the prekey information within TX Prekey store of the SA.
-Any time after the first reception of PC step 0, the entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-kc"/> activities which refer to the new prekey by its KID.
-        </t>
-      </section>
       <section anchor="sec-act-kc">
         <name>Key Creation (KC)</name>
         <t>
-This activity is used to establish a new set of derived key (and possibly other) material within an existing SA without changing the other parameters of the SA (<em>e.g.</em>, algorithm choice or endpoint selectors).
+This activity is used to establish a new set of derived content key material within an existing SA without changing the other parameters of the SA (<em>e.g.</em>, algorithm choice or endpoint selectors).
 The Key Creation (KC) activity <bcp14>SHALL</bcp14> be identified by activity type 6.
         </t>
         <t keepWithNext="true">
@@ -1983,7 +1930,7 @@ The sequence of steps and their data for this activity are the following:
           <tbody>
             <tr>
               <td>1</td>
-              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+              <td>The initiator local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
             </tr>
             <tr>
               <td>2</td>
@@ -1995,7 +1942,7 @@ The sequence of steps and their data for this activity are the following:
             </tr>
             <tr>
               <td>11</td>
-              <td>An optional random nonce per <xref target="sec-data-arn"/> used to add entropy to the new key.</td>
+              <td>An optional random nonce per <xref target="sec-data-arn"/> used to add entropy to the new key. The combination of KID and ARN <bcp14>SHOULD</bcp14> contain at least 128 bits of entropy (see BCP 106 <xref target="RFC4086"/>).</td>
             </tr>
             <tr>
               <td>12</td>
@@ -2025,7 +1972,7 @@ Any time after the first reception or transmission of KC step 0, either entity <
         <name>Key Discard (KD)</name>
         <t>
 This activity is used to indicate that an earlier content key has been discarded from its TX side owner and will no longer be used for any data plane security.
-The Key Discard (CD) activity <bcp14>SHALL</bcp14> be identified by activity type 7.
+The Key Discard (KD) activity <bcp14>SHALL</bcp14> be identified by activity type 7.
         </t>
         <t>
 It is an implementation matter to determine when to initiate a Key Discard activity.
@@ -2049,7 +1996,7 @@ The sequence of steps and their data for this activity are the following:
           <tbody>
             <tr>
               <td>1</td>
-              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+              <td>The initiator local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
             </tr>
             <tr>
               <td>2</td>
@@ -2066,21 +2013,21 @@ $$kd-data //= (1: safe-sai)
 $$kd-data //= (2: safe-kid)
 ]]></sourcecode>
         <t>
-Upon the first transmission of KD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that TX content key.
-Upon the first reception of KD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that RX content key.
+Upon the first transmission of KD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the local SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that record.
+Upon the first reception of KD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that record.
 Any time after the first reception or transmission of KD step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
 After transmission of KD step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
         </t>
       </section>
       <section anchor="sec-act-kr">
-        <name>Key Reject (CR)</name>
+        <name>Key Reject (KR)</name>
         <t>
 This activity is used to indicate that an earlier content key has been rejected from its RX side and will no longer be used for any data plane security.
-The CK Reject (CR) activity <bcp14>SHALL</bcp14> be identified by activity type 8.
+The Key Reject (KR) activity <bcp14>SHALL</bcp14> be identified by activity type 8.
         </t>
         <t>
-It is an implementation matter to determine when to initiate a CK Reject activity.
-The CK Reject <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
+It is an implementation matter to determine when to initiate a Key Reject activity.
+The Key Reject <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the content key has expired, as it will not serve any purpose to the responder.
         </t>
         <t keepWithNext="true">
 The sequence of steps and their data for this activity are the following:
@@ -2100,7 +2047,7 @@ The sequence of steps and their data for this activity are the following:
           <tbody>
             <tr>
               <td>1</td>
-              <td>The responder local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+              <td>The initiator local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
             </tr>
             <tr>
               <td>2</td>
@@ -2117,10 +2064,164 @@ $$kr-data //= (1: safe-sai)
 $$kr-data //= (2: safe-kid)
 ]]></sourcecode>
         <t>
-Upon the first transmission of KR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that content key.
-Upon the first reception of KR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that content key.
+Upon the first transmission of KR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the local SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Keys and remove that record.
+Upon the first reception of KR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Keys and remove that record.
 Any time after the first reception or transmission of KR step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
 After reception of KR step 0, the removed content key <bcp14>SHALL NOT</bcp14> be used for any later SAFE or data plane security.
+        </t>
+      </section>
+      <section anchor="sec-act-pc">
+        <name>Prekey Creation (PC)</name>
+        <t>
+This activity is used to preemptively share a one-time-use public key which can be used to add forward secrecy to later-derived content keys through the <xref format="title" target="sec-act-kc"/> activity.
+The initiator of this activity will hold a corresponding private key for the lifetime of the shared prekey.
+The recipient of this activity will be the initiator of the later <xref target="sec-act-kc">key creation</xref> activity.
+The Prekey Creation (PC) activity <bcp14>SHALL</bcp14> be identified by activity type 9.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 2: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>Prekey Creation Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The initiator local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>A <xref format="title" target="sec-data-nti"/> used as the prekey validity time interval.</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>The sender's one-time-use public prekey, as defined in <xref target="sec-data-pks"/>. This public key <bcp14>SHALL</bcp14> contain a kid (2) parameter used to identify the prekey. This public key <bcp14>SHALL</bcp14> contain an alg (1) parameter matching the "EDHOC key exchange algorithm" from the EDHOC cipher suite.</td>
+            </tr>
+          </tbody>
+        </table>
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<9, pc-data>
+pc-data = {* $$pc-data } .within safe-map
+
+; Identifiers for the initiator
+$$pc-data //= (1: safe-sai)
+$$pc-data //= (2: safe-kid)
+
+$$pc-data //= (3: safe-nti)
+$$pc-data //= (4: safe-pks)
+]]></sourcecode>
+        <t>
+Upon the first reception of PC step 0, the entity <bcp14>SHALL</bcp14> correlate the Local SAI of a Primary SA or Secondary SA and record the prekey information within TX Prekey store of the SA.
+Any time after the first reception of PC step 0, the entity <bcp14>MAY</bcp14> initiate <xref format="title" target="sec-act-kc"/> activities which refer to the new prekey by its KID.
+        </t>
+      </section>
+      <section anchor="sec-act-pd">
+        <name>Prekey Discard (PD)</name>
+        <t>
+This activity is used to indicate that an earlier private prekey has been discarded from its RX side owner and the associated public key will no longer be usable by any KC activity.
+The Prekey Discard (PD) activity <bcp14>SHALL</bcp14> be identified by activity type 10.
+        </t>
+        <t>
+It is an implementation matter to determine when to initiate a Prekey Discard activity.
+The Prekey Discard <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the prekey has expired, as it will not serve any purpose to the responder.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 1: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>Prekey Discard Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The initiator local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>The KID for the prekey created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is a RX content prekey, from the responder side this is a TX content prekey.</td>
+            </tr>
+          </tbody>
+        </table>
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<10, pd-data>
+pd-data = {* $$pd-data } .within safe-map
+
+; Identity of the prekey from the initiator
+$$pd-data //= (1: safe-sai)
+$$pd-data //= (2: safe-kid)
+]]></sourcecode>
+        <t>
+Upon the first transmission of PD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the local SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Prekeys and remove that record.
+Upon the first reception of PD step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Prekeys and remove that record.
+Any time after the first reception or transmission of PD step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed prekey from any other activities.
+        </t>
+      </section>
+      <section anchor="sec-act-pr">
+        <name>Prekey Reject (PR)</name>
+        <t>
+This activity is used to indicate that an earlier content prekey has been rejected from its RX side and will no longer be used for any data plane security.
+The Prekey Reject (PR) activity <bcp14>SHALL</bcp14> be identified by activity type 11.
+        </t>
+        <t>
+It is an implementation matter to determine when to initiate a Prekey Reject activity.
+The Prekey Reject <bcp14>SHOULD NOT</bcp14> be initiated after the validity time interval of the prekey has expired, as it will not serve any purpose to the responder.
+        </t>
+        <t keepWithNext="true">
+The sequence of steps and their data for this activity are the following:
+        </t>
+        <ul>
+          <li>Step 0: The payload is a map containing data items as defined below.</li>
+          <li>Step 1: No payload, message is acknowledgement.</li>
+        </ul>
+        <table align="center">
+          <name>Prekey Reject Data Items</name>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>The initiator local SAI for the containing SA, as defined in <xref target="sec-data-sai"/></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>The KID for the content key created by the initiator of this activity, as defined in <xref target="sec-data-kid"/>. From the initiator side this is an TX content prekey, from the responder side this is a RX content prekey.</td>
+            </tr>
+          </tbody>
+        </table>
+        <sourcecode type="cddl"><![CDATA[
+$safe-msg /= safe-act-type<11, pr-data>
+pr-data = {* $$pr-data } .within safe-map
+
+; Identity of the CK from the initiator
+$$pr-data //= (1: safe-sai)
+$$pr-data //= (2: safe-kid)
+]]></sourcecode>
+        <t>
+Upon the first transmission of PR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the local SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the TX Content Prekeys and remove that record.
+Upon the first reception of PR step 0, the entity <bcp14>SHALL</bcp14> correlate the contained SAI with the peer SAI of a Primary SA or Secondary SA and correlate the contained KID with the KID of one of the RX Content Prekeys and remove that record.
+Any time after the first reception or transmission of PR step 0, either entity <bcp14>SHALL NOT</bcp14> refer to the removed content key from any other activities.
         </t>
       </section>
     </section>
@@ -3880,12 +3981,6 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
               <td><xref target="sec-act-st"/> of [This specification]</td>
             </tr>
             <tr>
-              <td>5</td>
-              <td>Prekey Creation</td>
-              <td>PC</td>
-              <td><xref target="sec-act-pc"/> of [This specification]</td>
-            </tr>
-            <tr>
               <td>6</td>
               <td>Key Creation</td>
               <td>SC</td>
@@ -3899,12 +3994,30 @@ Within the registry group of <xref target="IANA-SAFE"/>, the registry titled "SA
             </tr>
             <tr>
               <td>8</td>
-              <td>CK Reject</td>
-              <td>CR</td>
+              <td>Key Reject</td>
+              <td>KR</td>
               <td><xref target="sec-act-kr"/> of [This specification]</td>
             </tr>
             <tr>
-              <td>9 to 32767</td>
+              <td>9</td>
+              <td>Prekey Creation</td>
+              <td>PC</td>
+              <td><xref target="sec-act-pc"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>10</td>
+              <td>Prekey Discard</td>
+              <td>PD</td>
+              <td><xref target="sec-act-pd"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>11</td>
+              <td>Prekey Reject</td>
+              <td>PR</td>
+              <td><xref target="sec-act-pr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>12 to 32767</td>
               <td><em>Unassigned</em></td>
               <td/>
               <td/>
@@ -3967,6 +4080,34 @@ This registry includes only well-known data item types; private use labels can b
               <td><xref target="sec-data-bcs"/> of [This specification]</td>
             </tr>
             <tr>
+              <td>CI</td>
+              <td>10</td>
+              <td>RX content key depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>CI</td>
+              <td>11</td>
+              <td>TX content key depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>CI</td>
+              <td>12</td>
+              <td>RX content prekey depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>CI</td>
+              <td>13</td>
+              <td>TX content prekey depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
               <td>SC</td>
               <td>1</td>
               <td>Security Association Identifier</td>
@@ -3975,24 +4116,17 @@ This registry includes only well-known data item types; private use labels can b
             </tr>
             <tr>
               <td>SC</td>
-              <td>2</td>
-              <td>Public Key Structure</td>
-              <td>PKS</td>
-              <td><xref target="sec-data-pks"/> of [This specification]</td>
+              <td>4</td>
+              <td>Security Operation Selector</td>
+              <td>SOS</td>
+              <td><xref target="sec-data-sos"/> of [This specification]</td>
             </tr>
             <tr>
               <td>SC</td>
-              <td>3</td>
-              <td>Additional Random Nonce</td>
-              <td>ARN</td>
-              <td><xref target="sec-data-arn"/> of [This specification]</td>
-            </tr>
-            <tr>
-              <td>SC</td>
-              <td>9</td>
-              <td>Security Mode Selector</td>
-              <td>SMS</td>
-              <td><xref target="sec-data-sms"/> of [This specification]</td>
+              <td>5</td>
+              <td>Key Use Selector</td>
+              <td>KUS</td>
+              <td><xref target="sec-data-kus"/> of [This specification]</td>
             </tr>
             <tr>
               <td>SC</td>
@@ -4017,17 +4151,164 @@ This registry includes only well-known data item types; private use labels can b
             </tr>
             <tr>
               <td>SC</td>
-              <td>4</td>
-              <td>Security Operation Selector</td>
-              <td>SOS</td>
-              <td><xref target="sec-data-sos"/> of [This specification]</td>
+              <td>9</td>
+              <td>Security Mode Selector</td>
+              <td>SMS</td>
+              <td><xref target="sec-data-sms"/> of [This specification]</td>
             </tr>
             <tr>
               <td>SC</td>
-              <td>5</td>
-              <td>Key Use Selector</td>
-              <td>KUS</td>
-              <td><xref target="sec-data-kus"/> of [This specification]</td>
+              <td>10</td>
+              <td>RX content key depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>SC</td>
+              <td>11</td>
+              <td>TX content key depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>SC</td>
+              <td>12</td>
+              <td>RX content prekey depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>SC</td>
+              <td>13</td>
+              <td>TX content prekey depth range</td>
+              <td>KDR</td>
+              <td><xref target="sec-data-kdr"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>ST</td>
+              <td>1</td>
+              <td>Security Association Identifier</td>
+              <td>SAI</td>
+              <td><xref target="sec-data-sai"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KC</td>
+              <td>1</td>
+              <td>Security Association Identifier</td>
+              <td>SAI</td>
+              <td><xref target="sec-data-sai"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KC</td>
+              <td>2</td>
+              <td>Key Identifier</td>
+              <td>KID</td>
+              <td><xref target="sec-data-kid"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KC</td>
+              <td>10</td>
+              <td>Prekey Identifier</td>
+              <td>KID</td>
+              <td><xref target="sec-data-kid"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KC</td>
+              <td>11</td>
+              <td>Additional Random Nonce</td>
+              <td>ARN</td>
+              <td><xref target="sec-data-arn"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KC</td>
+              <td>12</td>
+              <td>Validity Node Time Interval</td>
+              <td>NTI</td>
+              <td><xref target="sec-data-nti"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KD</td>
+              <td>1</td>
+              <td>Security Association Identifier</td>
+              <td>SAI</td>
+              <td><xref target="sec-data-sai"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KD</td>
+              <td>2</td>
+              <td>Key Identifier</td>
+              <td>KID</td>
+              <td><xref target="sec-data-kid"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KR</td>
+              <td>1</td>
+              <td>Security Association Identifier</td>
+              <td>SAI</td>
+              <td><xref target="sec-data-sai"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>KR</td>
+              <td>2</td>
+              <td>Key Identifier</td>
+              <td>KID</td>
+              <td><xref target="sec-data-kid"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PC</td>
+              <td>1</td>
+              <td>Security Association Identifier</td>
+              <td>SAI</td>
+              <td><xref target="sec-data-sai"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PC</td>
+              <td>2</td>
+              <td>Prekey Identifier</td>
+              <td>KID</td>
+              <td><xref target="sec-data-kid"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PC</td>
+              <td>3</td>
+              <td>Validity Node Time Interval</td>
+              <td>NTI</td>
+              <td><xref target="sec-data-nti"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PC</td>
+              <td>4</td>
+              <td>Public Key Structure</td>
+              <td>PCS</td>
+              <td><xref target="sec-data-pks"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PD</td>
+              <td>1</td>
+              <td>Security Association Identifier</td>
+              <td>SAI</td>
+              <td><xref target="sec-data-sai"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PD</td>
+              <td>2</td>
+              <td>Key Identifier</td>
+              <td>KID</td>
+              <td><xref target="sec-data-kid"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PR</td>
+              <td>1</td>
+              <td>Security Association Identifier</td>
+              <td>SAI</td>
+              <td><xref target="sec-data-sai"/> of [This specification]</td>
+            </tr>
+            <tr>
+              <td>PR</td>
+              <td>2</td>
+              <td>Key Identifier</td>
+              <td>KID</td>
+              <td><xref target="sec-data-kid"/> of [This specification]</td>
             </tr>
           </tbody>
         </table>
@@ -4060,26 +4341,74 @@ These entries are distinct and separate from the "EDHOC Error Codes" registry of
             </tr>
             <tr>
               <td><em>all types</em></td>
+              <td>0</td>
+              <td>Invalid activity index</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td><em>all types</em></td>
               <td>1</td>
-              <td>Invalid data item label</td>
+              <td>Unexpected activity step</td>
               <td>[This specification]</td>
             </tr>
             <tr>
               <td><em>all types</em></td>
               <td>2</td>
-              <td>Unknown data item label</td>
+              <td>Unknown activity type</td>
               <td>[This specification]</td>
             </tr>
             <tr>
               <td><em>all types</em></td>
               <td>3</td>
+              <td>Unexpected payload</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td><em>all types</em></td>
+              <td>10</td>
+              <td>Invalid data item label</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td><em>all types</em></td>
+              <td>11</td>
+              <td>Unknown data item label</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td><em>all types</em></td>
+              <td>12</td>
               <td>Invalid data item value</td>
               <td>[This specification]</td>
             </tr>
             <tr>
-              <td>SR,ST</td>
-              <td>256</td>
+              <td>SC</td>
+              <td>13</td>
+              <td>Duplicate SAI</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td>ST,KC,KD,KR,PC,PD,PR</td>
+              <td>14</td>
               <td>Unknown security association</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td>KC,PC</td>
+              <td>15</td>
+              <td>Duplicate KID</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td>KD,KR</td>
+              <td>16</td>
+              <td>Unknown content key</td>
+              <td>[This specification]</td>
+            </tr>
+            <tr>
+              <td>KC,PD,PR</td>
+              <td>17</td>
+              <td>Unknown content prekey</td>
               <td>[This specification]</td>
             </tr>
           </tbody>
@@ -4139,6 +4468,7 @@ These entries are distinct and separate from the "EDHOC Error Codes" registry of
           </front>
         </reference>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.4086.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
         <xi:include href="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.8610.xml"/>

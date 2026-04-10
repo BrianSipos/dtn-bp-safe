@@ -100,6 +100,7 @@ GCM
 hdr
 HMAC
 IANA
+ICK
 ident
 IDentifier
 Idx
@@ -118,6 +119,7 @@ ipv
 IPv
 ir
 JHU
+KD
 KDF
 KDR
 keepalive
@@ -223,6 +225,7 @@ TCPCLv
 teardown
 TLS
 tstr
+TXI
 UDP
 UDPCL
 uint

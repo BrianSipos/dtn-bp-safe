@@ -201,7 +201,7 @@ For that reason, the selected traffic <bcp14>SHOULD</bcp14> include only bundles
           </t>
           <t>
 Because the security operation here has the maximal lifetime, its target needs to be another block that is guaranteed to exist from bundle creation up to the point of delivery.
-Because of that, the target block (and any other covered blocks) for the end-to-end case <bcp14>SHALL</bcp14> to be one that also exists for the lifetime of the bundle.
+Because of that, the target block (and any other covered blocks) for the end-to-end case <bcp14>SHALL</bcp14> be one that also exists for the lifetime of the bundle.
           </t>
         </section>
         <section anchor="sec-intro-usecases-onehop">
@@ -244,7 +244,7 @@ A side effect of using SAFE in this mode, as a supplement to CL security, is tha
           <t>
 Because the security operation here has a limited lifetime, its target could be any block in the bundle.
 However, the constraint of <xref section="3.2" target="RFC9172"/> requires that the combination of security service and target block be unique within the bundle.
-Because of that, the target block for the one-hop case <bcp14>SHOULD</bcp14> to be one that also has a one-hop lifetime such as a Previous Node block.
+Because of that, the target block for the one-hop case <bcp14>SHOULD</bcp14> be one that also has a one-hop lifetime such as a Previous Node block.
           </t>
         </section>
         <section anchor="sec-intro-usecases-multihop">
@@ -327,7 +327,7 @@ Another context for CK use is within the data plane of participating nodes outsi
           <dt>Activity:</dt>
           <dd>
 Each SAFE activity consists of a sequence of messages being exchanged, via protocol messaging, between two participating entities to achieve a specific narrow goal.
-Each activity instance a specific type and one SAFE entity as its initiator.
+Each activity instance has a specific type and one SAFE entity as its initiator.
 Each type of activity consists of a well-defined number of steps of messaging between its entities.
           </dd>
           <dt>Message:</dt>
@@ -424,7 +424,7 @@ SAFE separates its messaging sub-layer from its packetization sub-layer (see <xr
 For an individual activity sequence this results in more total messages than two-way exchanges, but it enables pipelining of messages and selective retransmission (ARQ) of individual encoded messages from either side of an activity conversation.
       </t>
       <t>
-Some SAFE activities involve negotiating of a shared state between an initiator and a responder using two data-bearing steps and a final acknowledgement.
+Some SAFE activities involve negotiation of a shared state between an initiator and a responder using two data-bearing steps and a final acknowledgement.
 Many activities are unilateral, meaning they consist of a single data-bearing step from the initiator followed by a single responder acknowledgement.
 Having activities be unilateral makes the overall protocol more delay-tolerant.
       </t>
@@ -883,7 +883,7 @@ An entity <bcp14>SHOULD</bcp14> remove any TX Content Key when the wall-clock ti
             </tr>
             <tr>
               <td>Peer Accepted</td>
-              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-kc"/> activity without error.</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by receiving step 1 of an associated <xref format="title" target="sec-act-kc"/> activity without error.</td>
             </tr>
             <tr>
               <td>Partial IV Counter</td>
@@ -954,7 +954,7 @@ An entity <bcp14>SHOULD</bcp14> remove any RX Prekey when the wall-clock time ad
             </tr>
             <tr>
               <td>Peer Accepted</td>
-              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by by receiving step 1 of an associated <xref format="title" target="sec-act-pc"/> activity without error.</td>
+              <td>A boolean indicator of whether or not the peer entity has accepted this key. Acceptance is indicated by receiving step 1 of an associated <xref format="title" target="sec-act-pc"/> activity without error.</td>
             </tr>
             <tr>
               <td>Private Key</td>
@@ -1084,7 +1084,7 @@ This is used to derive further values for content key material as defined in <xr
             <tr>
               <td>TX and RX Content Keys</td>
               <td>
-This field represent a set of context-specific key material and derived options for each direction between the two peers.
+Each of these fields represent a set of context-specific key material and derived options for each direction between the two peers.
 The key material are derived from the shared secret created during <xref format="title" target="sec-act-sc"/> as defined in <xref target="sec-deriv-ssa-keys"/> and per-context specifications (see <xref target="sec-sa-use"/>).
               </td>
             </tr>
@@ -1198,7 +1198,7 @@ The sending of a step number greater than zero is also used to acknowledge recei
 The final acknowledgement of an activity is sent without a corresponding data payload in order to indicate that it is the end of the sequence.
         </t>
         <t>
-Because SAFE allows messages to be aggregated into an PDU, this also enables explicit pipelining of multiple activities over a sequence of PDUs.
+Because SAFE allows messages to be aggregated into a PDU, this also enables explicit pipelining of multiple activities over a sequence of PDUs.
 It is an implementation matter to determine when to aggregate messages but the patterns defined in <xref target="sec-pat"/> make use of aggregation.
         </t>
         <t>
@@ -1274,7 +1274,7 @@ The first step of an activity <bcp14>SHALL</bcp14> be zero, and each subsequent 
 This means that the initiator of an activity can be identified implicitly because it will only send messages with an even step number and will only receive messages with an odd step number.
         </t>
         <t>
-The first step of an activity <bcp14>SHALL NOT</bcp14> contain an error indication, as there are no previous steps or data items to have caused an error and each activity has a independent state progression (see <xref target="sec-layers-retrans"/>).
+The first step of an activity <bcp14>SHALL NOT</bcp14> contain an error indication, as there are no previous steps or data items to have caused an error and each activity has an independent state progression (see <xref target="sec-layers-retrans"/>).
 Any messages after the first step of an activity <bcp14>SHALL</bcp14> contain either a payload or an error indication.
 The determination of if and when to send an error indication is a determination of the sending entity.
         </t>
@@ -1608,8 +1608,8 @@ An indication of failure in the activity is provided by an EDHOC error CBOR sequ
 SAFE entities <bcp14>SHALL</bcp14> use EDHOC errors in accordance with <xref section="6" target="RFC9528"/>.
         </t>
         <t>
-During transport, PI PDUs <bcp14>SHALL NOT</bcp14> be the target of a BPSec confidentiality operation between the participating (source and destination) nodes.
-The use of application-level confidentiality ensures the security of information exchanged via this PDU.
+During transport, IA PDUs do not need to be the target of a BPSec confidentiality operation between the participating (source and destination) nodes.
+The use of application-level confidentiality ensures the security of information exchanged via this PDU without any pre-shared BPSec configuration.
 There is no restriction on any intermediate security handling of SAFE PDUs between the participating entities.
         </t>
         <t>
@@ -2324,7 +2324,7 @@ Each content key has a single KID defined by the entity which initiated the crea
         <t>
 A KID <bcp14>SHALL</bcp14> be treated as an opaque byte string as its internal representation and comparison logic.
 A KID <bcp14>SHALL</bcp14> be limited to a length between 0 and 16 bytes inclusive.
-This length allows a UUID <xref target="RFC9562"/> to be used as an KID.
+This length allows a UUID <xref target="RFC9562"/>, in its binary format, to be used as a KID.
 A KID <bcp14>SHALL</bcp14> have the same compressed encoding rules as EDHOC connection identifiers as defined in <xref section="3.3.2" target="RFC9528"/>.
         </t>
         <sourcecode type="cddl">
@@ -2487,7 +2487,7 @@ safe-kus-struct = [
 ]
 </sourcecode>
         <t>
-Some examples of what KUS options can be defined by each Context binding are: a specific algorithm identifier or an choice of additional authenticated data (AAD) outside the security target block.
+Some examples of what KUS options can be defined by each Context binding are: a specific algorithm identifier or a choice of additional authenticated data (AAD) outside the security target block.
         </t>
       </section>
     </section>
@@ -3005,7 +3005,7 @@ Use the result to construct the following PDU fields, named as in <xref target="
 Because this encoding does not use AAD to bind it to specific transport parameters, the entire PDU can be retained and retransmitted if necessary (see <xref target="sec-layers-retrans"/>).
           </t>
           <t keepWithNext="true">
-Upon receiving an PDU containing a non-null <tt>partial-iv</tt> and <tt>psa-kid</tt> values, the SAFE entity <bcp14>SHALL</bcp14> decrypt the aggregated messages according to the following.
+Upon receiving a PDU containing a non-null <tt>partial-iv</tt> and <tt>psa-kid</tt> values, the SAFE entity <bcp14>SHALL</bcp14> decrypt the aggregated messages according to the following.
           </t>
           <ol>
             <li>
@@ -3014,7 +3014,7 @@ If no match is found then the PDU is considered to be invalid and is dropped.
             </li>
             <li>
 Use the provided <tt>psa-kid</tt> to match with one of the RX Content Keys of the Primary SA.
-If no match is found then the entity <bcp14>MAY</bcp14> retain the PDU for an implementation defined period of time awaiting an associated CK Create activity.
+If no match is found then the entity <bcp14>MAY</bcp14> retain the PDU for an implementation-defined period of time awaiting an associated CK Create activity.
 Otherwise the PDU is considered to be invalid and is dropped.
             </li>
             <li>

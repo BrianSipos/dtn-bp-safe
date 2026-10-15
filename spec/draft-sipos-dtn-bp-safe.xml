@@ -250,7 +250,7 @@ Because of that, the target block for the one-hop case <bcp14>SHOULD</bcp14> be 
         <section anchor="sec-intro-usecases-multihop">
           <name>Multi-Hop Transport Security</name>
           <t>
-The multi-hop use case is where the SAFE entities negotiate secondary SAs which match arbitrary endpoints but apply to bundles traversing a several hops between the participating nodes.
+The multi-hop use case is where the SAFE entities negotiate secondary SAs which match arbitrary endpoints but apply to bundles traversing several hops between the participating nodes.
 This use case corresponds to the <tt>transport</tt> mode of <xref target="sec-data-sms"/>, just as the one-hop use case of <xref target="sec-intro-usecases-onehop"/>.
           </t>
           <t>
@@ -293,6 +293,29 @@ start = safe-pdu-seq / safe-msg / safe-msg-bstr
         <t>
 The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>", "SHALL", "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>", "<bcp14>RECOMMENDED</bcp14>", "<bcp14>NOT RECOMMENDED</bcp14>", "<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>" in this document are to be interpreted as described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only when, they appear in all capitals, as shown here.
         </t>
+        <t keepWithNext="true">
+This document re-uses the following terms from the LAKE protocol <xref target="RFC9528"/>.
+        </t>
+        <dl>
+          <dt>Initiator:</dt>
+          <dd>
+The entity which starts the first step of an activity, and for EDHOC specifically the initial authorization activity.
+          </dd>
+          <dt>Responder:</dt>
+          <dd>
+The entity which receives the first step of an activity, and for EDHOC specifically the initial authorization activity.
+          </dd>
+          <dt>Method:</dt>
+          <dd>
+The EDHOC method controls how each entity authenticates to its peer within an EDHOC session.
+Each method defines how both the initiator and responder will authenticate using a single code point.
+          </dd>
+          <dt>Cipher Suite:</dt>
+          <dd>
+The EDHOC cipher suite controls all cryptographic processing within an EDHOC session.
+Each cipher suite defines all SAFE-related algorithms (<em>i.e.</em>, outside of a BPSec context) using a single code point.
+          </dd>
+        </dl>
         <t keepWithNext="true">
 Terminology used within the SAFE protocol includes the following:
         </t>
@@ -361,7 +384,7 @@ A filter for BP traffic based on specific fields of the bundle primary block or 
     <section anchor="sec-prococol">
       <name>General Protocol Description</name>
       <t>
-The service of this protocol is the establishment and management of one or more secondary security association (SA) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific non-SAFE data plane traffic as described in <xref target="sec-protocol-bpsec"/>.
+The service of this protocol is the establishment and management of one or more secondary security associations (SAs) between two participating peer BP nodes (that may or may not be BP neighbors) which are used to inform a BPSec entity on each node how to secure specific non-SAFE data plane traffic as described in <xref target="sec-protocol-bpsec"/>.
 To avoid coupling each SAFE entity with any BPSec entity on the same node, SAFE PDUs use application-provided security instead of relying on BPSec.
       </t>
       <t>
@@ -371,8 +394,8 @@ The rough order of protocol operation is as follows:
         <li>Establish a confidential channel between a pair of SAFE entities using ephemeral keys.</li>
         <li>Perform mutual authentication based on a trusted credential for each entity.</li>
         <li>Exchange the capabilities and constraints from each entity.</li>
-        <li>Negotiate a primary SA for SAFE PDUs, with initial pair of content keys for SAFE PDUs.</li>
-        <li>Negotiate some number of secondary SAs for specific BPSec operations on specific traffic.</li>
+        <li>Negotiate a primary SA for SAFE PDUs, with a pseudo-random key (PRK) from which other material is derived. This state includes an initial pair of content keys for later SAFE PDU confidentiality.</li>
+        <li>Negotiate some number of secondary SAs for specific BPSec operations on specific traffic, each with its own PRK for derived material.</li>
         <li>Unilaterally upkeep content keys for primary and secondary SAs over time, with optional FS/PCS for each new key.</li>
         <li>Create or teardown secondary SAs as BPSec needs change over time.</li>
         <li>Re-authenticate or teardown the primary SA as determined by policy.</li>
